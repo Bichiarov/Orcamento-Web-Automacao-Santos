@@ -19,7 +19,6 @@ const produtos = [
 let itens = [{ descricao: "PDV Legal — Plano Base com Retaguarda", quantidade: 1, valor: 149.9 }];
 let descontos = [];
 const numeroContrato = `WEB-${new Date().getFullYear()}-001`;
-const observacaoPadrao = "Suporte remoto e presencial conforme disponibilidade técnica. Equipamentos, internet, certificado digital, computador, impressoras e periféricos não inclusos, salvo quando descritos neste contrato.";
 
 const $ = (id) => document.getElementById(id);
 function moeda(valor){ return Number(valor || 0).toLocaleString('pt-BR', {style:'currency', currency:'BRL'}); }
@@ -38,8 +37,20 @@ function getValue(id){ return $(id)?.value || ''; }
 function setText(id, text){ const el = $(id); if(el) el.textContent = text; }
 function totais(){
   const subtotal = itens.reduce((acc, item) => acc + item.quantidade * item.valor, 0);
-  const totalDescontos = descontos.reduce((acc, item) => acc + Number(item.valor || 0), 0);
-  return { subtotal, totalDescontos, mensalidade: Math.max(0, subtotal - totalDescontos) };
+  const totalDescontosMensalidade = descontos
+    .filter(item => item.tipo === 'mensalidade')
+    .reduce((acc, item) => acc + Number(item.valor || 0), 0);
+  const totalDescontosImplementacao = descontos
+    .filter(item => item.tipo === 'implementacao')
+    .reduce((acc, item) => acc + Number(item.valor || 0), 0);
+  const implementacaoBruta = Number(getValue('implementacao') || 0);
+  return {
+    subtotal,
+    totalDescontosMensalidade,
+    totalDescontosImplementacao,
+    mensalidade: Math.max(0, subtotal - totalDescontosMensalidade),
+    implementacaoLiquida: Math.max(0, implementacaoBruta - totalDescontosImplementacao)
+  };
 }
 function atualizar(){
   const documento = getValue('clienteDocumento');
@@ -57,19 +68,31 @@ function atualizar(){
   setText('outEmail', getValue('clienteEmail') || '________________');
   setText('outEndereco', getValue('clienteEndereco') || '________________');
   setText('outImplementacao', moeda(getValue('implementacao')));
-  setText('outDescontos', moeda(total.totalDescontos));
+  setText('outImplementacaoFinal', moeda(total.implementacaoLiquida));
   setText('outMensalidade', moeda(total.mensalidade));
+  setText('outSubtotalMensalidade', total.totalDescontosMensalidade > 0 ? `Subtotal: ${moeda(total.subtotal)}` : '');
   setText('outVencimento', `Vencimento: ${getValue('vencimento') || 'Todo dia 10'}`);
   setText('outValidade', `Validade da proposta: ${getValue('validade') || '10 dias'}`);
   setText('outValidadeTexto', getValue('validade') || '10 dias');
   setText('assinaturaCliente', getValue('clienteResponsavel') || 'Contratante');
   setText('assinaturaDoc', documento || '________________');
-  setText('outObservacoes', getValue('observacoes') || observacaoPadrao);
 
   const tbody = $('itensTabela');
   tbody.innerHTML = itens.map(item => `<tr><td>${item.descricao}</td><td class="center">${item.quantidade}</td><td class="right">${moeda(item.valor)}</td><td class="right"><b>${moeda(item.quantidade * item.valor)}</b></td></tr>`).join('');
-  const descontosEl = $('descontosLista');
-  descontosEl.innerHTML = descontos.map(item => `<p class="line green"><span>${item.descricao}:</span><b>- ${moeda(item.valor)}</b></p>`).join('');
+  const descontosImplementacaoEl = $('descontosImplementacaoLista');
+  if (descontosImplementacaoEl) {
+    descontosImplementacaoEl.innerHTML = descontos
+      .filter(item => item.tipo === 'implementacao')
+      .map(item => `<p class="line green"><span>${item.descricao}:</span><b>- ${moeda(item.valor)}</b></p>`)
+      .join('');
+  }
+  const descontosMensalidadeEl = $('descontosMensalidadeLista');
+  if (descontosMensalidadeEl) {
+    descontosMensalidadeEl.innerHTML = descontos
+      .filter(item => item.tipo === 'mensalidade')
+      .map(item => `<p class="line green-light"><span>${item.descricao}:</span><b>- ${moeda(item.valor)}</b></p>`)
+      .join('');
+  }
 }
 function preencherProdutos(){
   const select = $('produtoSelecionado');
@@ -85,9 +108,14 @@ function adicionarItem(){
 function adicionarDesconto(){
   const valor = Number(getValue('descontoValor') || 0);
   if(valor <= 0) return;
-  descontos.push({ descricao: getValue('descontoDescricao') || 'Desconto comercial', valor });
+  descontos.push({
+    descricao: getValue('descontoDescricao') || 'Desconto comercial',
+    valor,
+    tipo: getValue('descontoTipo') || 'mensalidade'
+  });
   $('descontoDescricao').value = '';
   $('descontoValor').value = '';
+  $('descontoTipo').value = 'mensalidade';
   atualizar();
 }
 function limparContrato(){
@@ -138,13 +166,9 @@ async function enviarWhatsApp(){
     `Data: ${dataBR(getValue('dataContrato'))}`,
     `Validade: ${getValue('validade') || '10 dias'}`,
     `Mensalidade: ${moeda(total.mensalidade)}`,
-    `Taxa de implementação: ${moeda(getValue('implementacao'))}`
+    `Taxa de implementação: ${moeda(total.implementacaoLiquida)}`
   ].join('\n');
   const arquivo = await gerarPdfArquivo();
-  if(arquivo && navigator.canShare && navigator.canShare({ files: [arquivo] })){
-    await navigator.share({ title: 'Orçamento PDV Legal', text: texto, files: [arquivo] });
-    return;
-  }
   if(arquivo){
     const url = URL.createObjectURL(arquivo);
     const a = document.createElement('a');
@@ -156,9 +180,9 @@ async function enviarWhatsApp(){
 function iniciar(){
   preencherProdutos();
   $('dataContrato').value = hojeISO();
-  $('observacoes').value = observacaoPadrao;
   $('docNumero').textContent = numeroContrato;
-  ['clienteNome','dataContrato','clienteDocumento','clienteTelefone','clienteResponsavel','clienteEmail','clienteEndereco','validade','vencimento','implementacao','observacoes'].forEach(id => $(id).addEventListener('input', atualizar));
+  ['clienteNome','dataContrato','clienteDocumento','clienteTelefone','clienteResponsavel','clienteEmail','clienteEndereco','validade','vencimento','implementacao'].forEach(id => $(id).addEventListener('input', atualizar));
+  $('descontoTipo').addEventListener('change', atualizar);
   $('clienteDocumento').addEventListener('input', (e) => { e.target.value = formatarDocumento(e.target.value); atualizar(); });
   $('btnAdicionarItem').addEventListener('click', adicionarItem);
   $('btnAdicionarDesconto').addEventListener('click', adicionarDesconto);

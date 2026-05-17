@@ -36,7 +36,13 @@
 
         <div class="section-title">
           <h2>Descontos</h2>
-          <p>Após adicionar desconto, ele será abatido da mensalidade.</p>
+          <p>Escolha se o desconto será aplicado na implementação ou na mensalidade.</p>
+          <label class="full-field"><span>Aplicar desconto em</span>
+            <select id="descontoTipo">
+              <option value="mensalidade">Mensalidade</option>
+              <option value="implementacao">Implementação</option>
+            </select>
+          </label>
           <div class="row discounts-row">
             <label><span>Descrição do desconto</span><input id="descontoDescricao" placeholder="Ex.: Desconto implantação"></label>
             <label><span>Valor do desconto</span><input id="descontoValor" type="number" min="0" placeholder="Ex.: 450"></label>
@@ -53,8 +59,6 @@
         </div>
 
         <label><span>Taxa de implementação</span><input id="implementacao" type="number" value="450"></label>
-        <label><span>Observações adicionais</span><textarea id="observacoes"></textarea></label>
-
         <div class="actions two">
           <button class="btn btn-outline" id="btnGerarPdf">Gerar PDF</button>
           <button class="btn btn-dark" id="btnRemoverUltimo">Remover último item</button>
@@ -117,12 +121,14 @@
         <div class="doc-section implementation-card">
           <h3>4. Implementação</h3>
           <p class="line"><span>Taxa de implementação:</span><b id="outImplementacao">R$ 450,00</b></p>
-          <div id="descontosLista"></div>
-          <p class="line total-line"><span>Total descontos:</span><b id="outDescontos">R$ 0,00</b></p>
+          <div id="descontosImplementacaoLista"></div>
+          <p class="line total-line"><span>Total implementação:</span><b id="outImplementacaoFinal">R$ 450,00</b></p>
         </div>
         <div class="total-card">
           <h3>5. Mensalidade</h3>
           <div class="value" id="outMensalidade">R$ 149,90</div>
+          <div id="descontosMensalidadeLista"></div>
+          <p class="subtotal-note" id="outSubtotalMensalidade"></p>
           <p id="outVencimento">Vencimento: Todo dia 10</p>
           <p id="outValidade">Validade da proposta: 10 dias</p>
         </div>
@@ -136,11 +142,6 @@
         <p><b>6.4.</b> Serviços não previstos, visitas emergenciais, reinstalações, treinamentos extras, redes, computadores, impressoras ou equipamentos poderão ser orçados separadamente.</p>
       </section>
 
-      <section class="doc-section avoid-break observations">
-        <h3>7. Observações comerciais</h3>
-        <p id="outObservacoes"></p>
-        <p class="validade"><b>Validade da proposta:</b> <span id="outValidadeTexto">10 dias</span>, contados a partir da data de emissão.</p>
-      </section>
 
       <section class="signature avoid-break">
         <div class="signature-box">
