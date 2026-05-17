@@ -1,180 +1,197 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Contrato PDV Legal | Web Automação Santos</title>
   <link rel="stylesheet" href="assets/css/styles.css" />
 </head>
 <body>
   <header class="topbar no-print">
     <div>
-      <h1>Contrato de Serviços — PDV Legal | Web Automação Santos</h1>
-      <p>Preencha os dados, simule o custo, assine digitalmente e imprima/salve em PDF.</p>
+      <h1>Contrato de Serviços — PDV Legal</h1>
+      <p>Web Automação Santos • Simulação de custo • Proposta comercial • Contrato</p>
     </div>
-    <button id="btnPrint" class="btn primary">Imprimir / Salvar PDF</button>
+    <div class="topbar-actions">
+      <button id="btnPrint" class="btn primary">Imprimir / Salvar PDF</button>
+    </div>
   </header>
 
-  <main class="app">
+  <main class="layout">
     <section class="panel no-print">
       <div class="card">
-        <h2>Dados do contrato</h2>
+        <h2>Dados da proposta</h2>
         <div class="grid two">
-          <label>Nº contrato<input id="numeroContrato" /></label>
-          <label>Data<input id="dataContrato" /></label>
+          <label>Nº contrato/proposta<input id="numeroContrato" type="text" /></label>
+          <label>Data<input id="dataContrato" type="text" /></label>
+          <label>Vencimento mensal<input id="vencimento" type="text" value="Todo dia 10" /></label>
+          <label>Tempo de proposta<input id="validadeProposta" type="text" value="10 dias" /></label>
         </div>
-        <label>Vencimento mensal<input id="vencimento" value="Todo dia 10" /></label>
-        <label>Fidelidade<input id="fidelidade" value="Sem fidelidade mínima" /></label>
-        <label>Validade da proposta<input id="validade" value="30 dias" /></label>
+        <label>Condição / fidelidade<input id="fidelidade" type="text" value="Sem fidelidade mínima" /></label>
       </div>
 
       <div class="card">
         <h2>Dados do contratante</h2>
-        <label>Razão social<input id="clienteRazao" /></label>
-        <label>Nome fantasia<input id="clienteFantasia" /></label>
+        <label>Razão social / Nome<input id="razao" type="text" placeholder="Nome ou razão social do cliente" /></label>
+        <label>Nome fantasia<input id="fantasia" type="text" /></label>
         <div class="grid two">
-          <label>CNPJ<input id="clienteCnpj" /></label>
-          <label>Telefone<input id="clienteTelefone" /></label>
+          <label><span id="labelDocumento">CPF</span><input id="documento" type="text" placeholder="CPF ou CNPJ" maxlength="18" /></label>
+          <label>Telefone<input id="telefone" type="text" /></label>
         </div>
-        <label>Responsável<input id="clienteResponsavel" /></label>
-        <div class="grid two">
-          <label>CPF<input id="clienteCpf" /></label>
-          <label>E-mail<input id="clienteEmail" /></label>
-        </div>
-        <label>Endereço<input id="clienteEndereco" /></label>
+        <label>Responsável<input id="responsavel" type="text" /></label>
+        <label>E-mail<input id="email" type="email" /></label>
+        <label>Endereço<input id="endereco" type="text" /></label>
       </div>
 
       <div class="card">
-        <h2>Simulador de custo PDV Legal 2026</h2>
-        <p class="hint">Uso interno. Retaguarda é obrigatório para venda de PDV Legal.</p>
-        <div id="modulos" class="module-list"></div>
+        <h2>Tabela de venda ao cliente</h2>
+        <p class="hint">Selecione os itens que entrarão na proposta comercial. Esta tabela é a referência de preço para o usuário final.</p>
+        <div id="saleTable" class="check-list"></div>
+        <div class="total-box light">
+          <span>Total mensal ao cliente</span>
+          <strong id="totalVenda">R$ 0,00</strong>
+        </div>
+      </div>
 
-        <div class="grid two qty-grid">
+      <div class="card">
+        <h2>Simulador interno de custo PDV Legal 2026</h2>
+        <p class="hint">Tabela interna da Web Automação Santos. Retaguarda é obrigatório para venda de PDV Legal.</p>
+        <div id="costTable" class="check-list"></div>
+        <div class="grid two quantities">
           <label>Qtd. PDVs ativos<input id="qtdPdvs" type="number" min="1" value="1" /></label>
-          <label>Qtd. Balanças<input id="qtdBalancas" data-dep="balancas" type="number" min="0" value="0" disabled /></label>
-          <label>Qtd. KDS PDV Legal<input id="qtdKdsPdv" data-dep="kdsPDVLegal" type="number" min="0" value="0" disabled /></label>
-          <label>Qtd. Totens TokMenu<input id="qtdTotem" data-dep="totemTokMenu" type="number" min="0" value="0" disabled /></label>
-          <label>Qtd. KDS TokMenu<input id="qtdKdsTok" data-dep="kdsTokMenu" type="number" min="0" value="0" disabled /></label>
+          <label>Qtd. Balanças<input id="qtdBalancas" type="number" min="0" value="0" disabled /></label>
+          <label>Qtd. KDS PDV Legal<input id="qtdKdsPdv" type="number" min="0" value="0" disabled /></label>
+          <label>Qtd. Totens TokMenu<input id="qtdTotem" type="number" min="0" value="0" disabled /></label>
+          <label>Qtd. KDS TokMenu<input id="qtdKdsTok" type="number" min="0" value="0" disabled /></label>
         </div>
-
-        <div class="rule"><strong>Regra:</strong> licença de PDV custa R$ 15,00 por PDV, independentemente da quantidade.</div>
-        <div class="total-box">
+        <div class="rule-box">
+          <strong>Regra de custo dos PDVs:</strong> 1 ou 2 PDVs custam R$ 15,00 no total. A partir de 3 PDVs, cada PDV custa R$ 10,00.
+        </div>
+        <div class="total-box dark">
           <span>Custo total estimado</span>
-          <strong id="custoTotal">R$ 0,00</strong>
-          <small id="resumoPdvs">1 PDV × R$ 15,00</small>
+          <strong id="totalCusto">R$ 0,00</strong>
+          <small id="regraPdvs"></small>
         </div>
       </div>
 
       <div class="card">
-        <h2>Observações</h2>
-        <textarea id="observacoes" rows="5">Suporte remoto e presencial conforme disponibilidade técnica. Treinamento inicial incluso na implantação. Equipamentos, certificados digitais, internet, computador, impressoras, NF e periféricos não inclusos, salvo quando descritos no contrato.</textarea>
+        <h2>Implantação e observações</h2>
+        <div class="grid two">
+          <label>Implantação<input id="implantacao" type="number" min="0" value="900" /></label>
+          <label>Desconto implantação<input id="descontoImplantacao" type="number" min="0" value="900" /></label>
+        </div>
+        <label>Observações<textarea id="observacoes" rows="5">Suporte remoto e presencial conforme disponibilidade técnica. Treinamento inicial incluso na implantação. Equipamentos, certificados digitais, internet, computador, impressoras, NF e periféricos não inclusos, salvo quando descritos no contrato.</textarea></label>
       </div>
 
       <div class="card">
         <h2>Assinatura digital do contratante</h2>
-        <canvas id="assinatura" width="900" height="240"></canvas>
-        <div class="signature-actions">
-          <button id="limparAssinatura" class="btn secondary">Limpar assinatura</button>
-        </div>
+        <canvas id="signature" width="900" height="240"></canvas>
+        <button id="clearSignature" class="btn secondary" type="button">Limpar assinatura</button>
       </div>
     </section>
 
-    <section class="document" id="documentoContrato">
-      <div class="doc-inner">
+    <section class="document-wrap">
+      <article id="contractDoc" class="document a4">
         <header class="doc-header">
           <div>
-            <div class="brand"><span>WEB</span> AUTOMAÇÃO</div>
+            <div class="brand"><span>WEB</span> AUTOMAÇÃO SANTOS</div>
             <p>PDV Legal • Automação Comercial • Suporte Técnico</p>
             <p class="small">Razão Social: ALEXANDER EMIDIO BICHIAROV 30642954895 • CNPJ: 23.349.902/0001-33</p>
           </div>
-          <div class="contract-box">
+          <div class="contract-number">
             <small>Contrato</small>
-            <strong id="pvNumero">WEB-2026-001</strong>
-            <span id="pvData">Data: --/--/----</span>
+            <strong id="docNumero">WEB-0000-001</strong>
+            <small id="docData">Data: --/--/----</small>
           </div>
         </header>
 
-        <div class="title-block">
+        <section class="title-block">
           <h2>Contrato de Prestação de Serviços</h2>
           <p>Licenciamento, implantação, configuração e suporte ao sistema PDV Legal</p>
-        </div>
+        </section>
 
-        <section class="doc-card">
+        <section class="box">
           <h3>1. Contratada</h3>
-          <div class="doc-grid">
+          <div class="info-grid">
             <p><strong>Nome comercial:</strong> Web Automação Santos</p>
             <p><strong>Razão social:</strong> ALEXANDER EMIDIO BICHIAROV 30642954895</p>
             <p><strong>CNPJ:</strong> 23.349.902/0001-33</p>
           </div>
         </section>
 
-        <section class="doc-card">
+        <section class="box">
           <h3>2. Contratante</h3>
-          <div class="doc-grid">
-            <p><strong>Razão social:</strong> <span id="pvRazao">________________________________</span></p>
-            <p><strong>Nome fantasia:</strong> <span id="pvFantasia">________________________________</span></p>
-            <p><strong>CNPJ:</strong> <span id="pvCnpj">________________</span></p>
-            <p><strong>Responsável:</strong> <span id="pvResponsavel">________________</span></p>
-            <p><strong>CPF:</strong> <span id="pvCpf">________________</span></p>
-            <p><strong>Telefone:</strong> <span id="pvTelefone">________________</span></p>
-            <p class="wide"><strong>E-mail:</strong> <span id="pvEmail">________________</span></p>
-            <p class="wide"><strong>Endereço:</strong> <span id="pvEndereco">________________________________________________________________</span></p>
+          <div class="info-grid">
+            <p><strong>Razão social / Nome:</strong> <span id="docRazao">________________</span></p>
+            <p><strong>Nome fantasia:</strong> <span id="docFantasia">________________</span></p>
+            <p><strong id="docDocLabel">CPF:</strong> <span id="docDocumento">________________</span></p>
+            <p><strong>Responsável:</strong> <span id="docResponsavel">________________</span></p>
+            <p><strong>Telefone:</strong> <span id="docTelefone">________________</span></p>
+            <p><strong>E-mail:</strong> <span id="docEmail">________________</span></p>
+            <p class="full"><strong>Endereço:</strong> <span id="docEndereco">________________</span></p>
           </div>
         </section>
 
-        <section class="doc-card">
-          <h3>3. Simulação interna de custo PDV Legal 2026</h3>
-          <div id="pvLinhasCusto" class="cost-lines"></div>
-          <div class="doc-total">CUSTO TOTAL: <span id="pvCustoTotal">R$ 0,00</span></div>
+        <section>
+          <h3>3. Serviços contratados</h3>
+          <table>
+            <thead>
+              <tr><th>Descrição</th><th>Qtde</th><th>Valor unit.</th><th>Total</th></tr>
+            </thead>
+            <tbody id="docSaleRows"></tbody>
+          </table>
         </section>
 
-        <section class="doc-card clauses">
-          <h3>4. Escopo dos serviços</h3>
-          <p>Mediante o pagamento da mensalidade contratada, o CONTRATANTE terá acesso ao sistema PDV Legal e aos módulos contratados, conforme a configuração comercial aprovada entre as partes.</p>
-          <p>A Web Automação Santos prestará serviços de implantação, configuração, orientação de uso e suporte técnico relacionados ao PDV Legal.</p>
+        <section class="summary-grid">
+          <div class="box">
+            <h3>4. Implantação</h3>
+            <p class="line"><span>Valor de implantação</span><strong id="docImplantacao">R$ 0,00</strong></p>
+            <p class="line discount"><span>Desconto concedido</span><strong id="docDesconto">- R$ 0,00</strong></p>
+            <p class="line total"><span>Total implantação</span><strong id="docTotalImplantacao">R$ 0,00</strong></p>
+          </div>
+          <div class="box dark-box">
+            <h3>5. Mensalidade</h3>
+            <div class="big-total" id="docTotalVenda">R$ 0,00</div>
+            <p>Vencimento: <span id="docVencimento">Todo dia 10</span></p>
+            <p>Condição: <span id="docFidelidade">Sem fidelidade mínima</span></p>
+            <p>Validade da proposta: <span id="docValidade">10 dias</span></p>
+          </div>
         </section>
 
-        <section class="doc-card clauses">
-          <h3>5. Implantação e treinamento</h3>
-          <p>Para a implantação, o CONTRATANTE deverá manter equipamentos, rede elétrica, rede lógica, internet e demais recursos técnicos em funcionamento.</p>
-          <p>Estão inclusos, quando aplicável: instalação/configuração do sistema, orientação operacional do PDV e orientação básica de retaguarda.</p>
+        <section class="box internal-cost">
+          <h3>6. Simulação interna de custo PDV Legal 2026</h3>
+          <div id="docCostRows"></div>
+          <p class="cost-total">CUSTO TOTAL: <span id="docTotalCusto">R$ 0,00</span></p>
         </section>
 
-        <section class="doc-card clauses">
-          <h3>6. Responsabilidade fiscal do contratante</h3>
-          <p>O CONTRATANTE declara ser responsável pela veracidade das informações fiscais, tributárias, cadastrais e comerciais inseridas no sistema, bem como pela conferência de documentos fiscais, preços, impostos, NCM, CEST, CFOP, CST/CSOSN, alíquotas, certificados digitais e demais informações necessárias à sua operação.</p>
-          <p>Arquivos fiscais, documentos eletrônicos, backups, conferências e guarda pelo prazo legal são de responsabilidade do CONTRATANTE, salvo contratação específica em separado.</p>
+        <section class="box clauses">
+          <h3>7. Cláusulas resumidas</h3>
+          <p><strong>7.1.</strong> A Web Automação Santos prestará serviços de implantação, configuração, orientação de uso e suporte técnico relacionados ao PDV Legal, conforme módulos e quantidades descritos neste contrato.</p>
+          <p><strong>7.2.</strong> A mensalidade contempla o direito de uso dos serviços contratados e suporte conforme canais oficiais de atendimento da Web Automação Santos.</p>
+          <p><strong>7.3.</strong> O contratante é responsável por manter internet, equipamentos, periféricos, energia elétrica, certificado digital, dados fiscais e demais recursos necessários para o funcionamento do sistema.</p>
+          <p><strong>7.4.</strong> O contratante é responsável pela veracidade das informações fiscais, cadastros, alíquotas, NCM, CEST, CFOP, preços, emissão e guarda de documentos fiscais gerados pelo sistema.</p>
+          <p><strong>7.5.</strong> Serviços não previstos, visitas emergenciais, reinstalações, treinamentos extras, redes, computadores, impressoras ou equipamentos poderão ser orçados separadamente.</p>
         </section>
 
-        <section class="doc-card clauses">
-          <h3>7. Condições comerciais</h3>
-          <p><strong>Vencimento:</strong> <span id="pvVencimento">Todo dia 10</span></p>
-          <p><strong>Fidelidade:</strong> <span id="pvFidelidade">Sem fidelidade mínima</span></p>
-          <p><strong>Validade da proposta:</strong> <span id="pvValidade">30 dias</span></p>
-          <p>Reajustes, serviços extras, visitas emergenciais, reinstalações, treinamentos adicionais, infraestrutura, computadores, impressoras, rede, internet, certificados digitais e equipamentos poderão ser orçados separadamente.</p>
-        </section>
-
-        <section class="doc-card clauses">
-          <h3>8. Observações</h3>
-          <p id="pvObservacoes"></p>
+        <section class="box">
+          <h3>8. Observações comerciais</h3>
+          <p id="docObservacoes"></p>
+          <p><strong>Validade da proposta:</strong> <span id="docValidade2">10 dias</span>, contados a partir da data de emissão.</p>
         </section>
 
         <section class="signatures">
-          <div class="signature-box">
-            <div class="signature-image-wrap"><img id="pvAssinatura" alt="Assinatura do contratante" /></div>
-            <div class="line"></div>
-            <strong id="pvAssinante">Contratante</strong>
-            <small>CPF: <span id="pvCpfAssinatura">________________</span></small>
+          <div class="sign-box">
+            <div class="signature-preview"><img id="docSignature" alt="Assinatura do contratante" /></div>
+            <div class="sign-line"><span id="docAssinante">Contratante</span></div>
+            <small>Contratante</small>
           </div>
-          <div class="signature-box">
-            <div class="signature-company">WEB AUTOMAÇÃO</div>
-            <div class="line"></div>
-            <strong>Web Automação Santos</strong>
-            <small>ALEXANDER EMIDIO BICHIAROV 30642954895</small>
-            <small>CNPJ: 23.349.902/0001-33</small>
+          <div class="sign-box">
+            <div class="signature-preview text-sign">WEB AUTOMAÇÃO SANTOS</div>
+            <div class="sign-line">Web Automação Santos</div>
+            <small>ALEXANDER EMIDIO BICHIAROV 30642954895<br>CNPJ: 23.349.902/0001-33</small>
           </div>
         </section>
-      </div>
+      </article>
     </section>
   </main>
 
