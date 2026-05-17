@@ -1,199 +1,160 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Web Automação Santos | Orçamento e Contrato PDV Legal</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Contrato PDV Legal — Web Automação Santos</title>
   <link rel="stylesheet" href="assets/css/styles.css" />
 </head>
 <body>
   <main class="app-shell">
     <aside class="panel no-print">
-      <header class="panel-header">
+      <div class="panel-head">
         <h1>Novo contrato</h1>
-        <p>Preencha os dados, escolha os produtos e gere o orçamento/contrato no padrão oficial da Web Automação Santos.</p>
-      </header>
+        <p>App web para orçamentos e envio de contratos PDV Legal.</p>
+      </div>
 
       <section class="form-grid two">
-        <label>
-          <span>Cliente / Loja</span>
-          <input id="clienteNome" type="text" placeholder="Nome do cliente" />
-        </label>
-        <label>
-          <span>Data</span>
-          <input id="dataContrato" type="date" />
-        </label>
+        <label><span>Cliente / Loja</span><input id="clienteNome" placeholder="Nome do cliente" /></label>
+        <label><span>Data</span><input id="dataContrato" type="date" /></label>
       </section>
 
       <section class="form-grid two">
-        <label>
-          <span id="docLabel">CPF/CNPJ</span>
-          <input id="documento" type="text" placeholder="CPF ou CNPJ" maxlength="18" />
-        </label>
-        <label>
-          <span>Telefone</span>
-          <input id="telefone" type="text" placeholder="WhatsApp" />
-        </label>
+        <label><span id="docLabel">CPF/CNPJ</span><input id="clienteDoc" placeholder="CPF ou CNPJ" /></label>
+        <label><span>Telefone</span><input id="telefone" placeholder="WhatsApp" /></label>
       </section>
 
-      <section class="form-stack">
-        <label>
-          <span>Responsável</span>
-          <input id="responsavel" type="text" placeholder="Responsável" />
-        </label>
-        <label>
-          <span>E-mail</span>
-          <input id="email" type="email" placeholder="E-mail" />
-        </label>
-        <label>
-          <span>Endereço</span>
-          <input id="endereco" type="text" placeholder="Endereço completo" />
-        </label>
+      <label><span>Responsável</span><input id="responsavel" placeholder="Responsável" /></label>
+      <label><span>E-mail</span><input id="email" placeholder="E-mail" /></label>
+      <label><span>Endereço</span><input id="endereco" placeholder="Endereço completo" /></label>
+
+      <section class="form-grid item-row">
+        <label><span>Item da tabela</span><select id="produtoSelect"></select></label>
+        <label><span>Qtd.</span><input id="quantidade" type="number" min="1" value="1" /></label>
       </section>
 
-      <section class="form-grid product-row">
-        <label class="item-select-wrap">
-          <span>Item da tabela</span>
-          <select id="produtoSelecionado"></select>
-        </label>
-        <label class="qty-wrap">
-          <span>Quantidade</span>
-          <input id="quantidade" type="number" min="1" value="1" />
-        </label>
-      </section>
+      <button class="btn primary" id="addItem">Adicionar item</button>
 
-      <button id="adicionarItem" class="btn primary full">Adicionar item</button>
-
-      <section class="discount-block">
+      <section class="discount-box">
         <h2>Descontos</h2>
         <p>Informe descontos comerciais, quando houver.</p>
-        <div class="form-grid two aligned-discount">
-          <label>
-            <span>Descrição do desconto</span>
-            <input id="descontoDescricao" type="text" placeholder="Ex.: Desconto implantação" />
-          </label>
-          <label>
-            <span>Valor do desconto</span>
-            <input id="descontoValor" type="number" min="0" placeholder="Ex.: 450" />
-          </label>
-        </div>
-        <div class="button-grid">
-          <button id="adicionarDesconto" class="btn dark">Adicionar desconto</button>
-          <button id="limparOrcamento" class="btn danger">Limpar orçamento</button>
-        </div>
+        <section class="form-grid two aligned-discount">
+          <label><span>Descrição do desconto</span><input id="descDesconto" placeholder="Ex.: Desconto implantação" /></label>
+          <label><span>Valor do desconto</span><input id="valorDesconto" type="number" min="0" placeholder="Ex.: 450" /></label>
+        </section>
+        <section class="form-grid two action-row">
+          <button class="btn dark" id="addDesconto">Adicionar desconto</button>
+          <button class="btn danger" id="limpar">Limpar orçamento</button>
+        </section>
       </section>
 
-      <section class="form-grid two divider-top">
-        <label>
-          <span>Tempo proposta</span>
-          <input id="validade" type="text" value="10 dias" />
-        </label>
-        <label>
-          <span>Vencimento</span>
-          <input id="vencimento" type="text" value="Todo dia 10" />
-        </label>
+      <section class="form-grid two">
+        <label><span>Tempo proposta</span><input id="validade" value="10 dias" /></label>
+        <label><span>Vencimento</span><input id="vencimento" value="Todo dia 10" /></label>
       </section>
 
-      <section class="actions divider-top">
-        <button id="baixarPdf" class="btn primary full">Baixar PDF</button>
-        <div class="button-grid">
-          <button id="imprimir" class="btn outline">Gerar PDF / Imprimir</button>
-          <button id="removerUltimo" class="btn dark">Remover último item</button>
-        </div>
-        <button id="whatsapp" class="btn whatsapp full">Enviar orçamento por WhatsApp</button>
+      <section class="form-grid two">
+        <label><span>Taxa de implementação</span><input id="implementacao" type="number" value="450" /></label>
+        <label><span>Nº contrato</span><input id="numeroContrato" /></label>
+      </section>
+
+      <section class="actions">
+        <button class="btn primary" id="baixarPdf">Baixar PDF</button>
+        <section class="form-grid two action-row">
+          <button class="btn outline" id="imprimir"><span>Gerar PDF / Imprimir</span></button>
+          <button class="btn dark" id="removerUltimo">Remover último item</button>
+        </section>
+        <button class="btn whatsapp" id="whatsapp">Enviar orçamento por WhatsApp</button>
       </section>
     </aside>
 
-    <section class="preview print-area" id="contratoPreview">
-      <header class="contract-header">
-        <div>
-          <h2><span>WEB</span> AUTOMAÇÃO SANTOS</h2>
-          <p>PDV Legal • Automação Comercial • Suporte Técnico</p>
-          <small>Razão Social: ALEXANDER EMIDIO BICHIAROV 30642954895 • CNPJ: 23.349.902/0001-33</small>
-        </div>
-        <div class="contract-number">
-          <small>Contrato</small>
-          <strong id="numeroContrato">WEB-2026-001</strong>
-          <small id="dataPreview">Data: --/--/----</small>
-        </div>
-      </header>
+    <section class="preview-wrap">
+      <article class="print-area" id="printArea">
+        <header class="doc-header">
+          <div class="brand-block">
+            <div class="brand-line"><span>WEB</span> AUTOMAÇÃO SANTOS</div>
+            <p>PDV Legal • Automação Comercial • Suporte Técnico</p>
+            <small>Razão Social: ALEXANDER EMIDIO BICHIAROV 30642954895 • CNPJ: 23.349.902/0001-33</small>
+          </div>
+          <div class="contract-box">
+            <small>CONTRATO</small>
+            <strong id="outNumero">WEB-2026-001</strong>
+            <span id="outData">__/__/____</span>
+          </div>
+        </header>
 
-      <div class="contract-title">
-        <h1>Contrato de Prestação de Serviços</h1>
-        <p>Orçamento, licenciamento, configuração e suporte ao sistema PDV Legal</p>
-      </div>
+        <section class="doc-title">
+          <h2>Contrato de Prestação de Serviços</h2>
+          <p>Licenciamento, implantação, configuração e suporte ao sistema PDV Legal</p>
+        </section>
 
-      <section class="contract-card">
-        <h3>1. Contratada</h3>
-        <div class="contract-grid">
-          <p><strong>Nome comercial:</strong> Web Automação Santos</p>
-          <p><strong>Razão social:</strong> ALEXANDER EMIDIO BICHIAROV 30642954895</p>
-          <p><strong>CNPJ:</strong> 23.349.902/0001-33</p>
-        </div>
-      </section>
+        <section class="parties-grid">
+          <div class="info-card">
+            <h3>1. Contratada</h3>
+            <p><b>Nome comercial:</b> Web Automação Santos</p>
+            <p><b>Razão social:</b> ALEXANDER EMIDIO BICHIAROV 30642954895</p>
+            <p><b>CNPJ:</b> 23.349.902/0001-33</p>
+          </div>
+          <div class="info-card">
+            <h3>2. Contratante</h3>
+            <p><b>Cliente/Loja:</b> <span id="outCliente">________________________________</span></p>
+            <p><b><span id="outDocLabel">CPF/CNPJ</span>:</b> <span id="outDoc">________________</span></p>
+            <p><b>Responsável:</b> <span id="outResp">________________</span></p>
+            <p><b>Telefone:</b> <span id="outTel">________________</span></p>
+            <p><b>E-mail:</b> <span id="outEmail">________________</span></p>
+            <p><b>Endereço:</b> <span id="outEndereco">________________</span></p>
+          </div>
+        </section>
 
-      <section class="contract-card">
-        <h3>2. Contratante</h3>
-        <div class="contract-grid">
-          <p><strong>Cliente/Loja:</strong> <span id="pvCliente">________________________________</span></p>
-          <p><strong id="pvDocLabel">CPF/CNPJ:</strong> <span id="pvDocumento">________________</span></p>
-          <p><strong>Responsável:</strong> <span id="pvResponsavel">________________</span></p>
-          <p><strong>Telefone:</strong> <span id="pvTelefone">________________</span></p>
-          <p><strong>E-mail:</strong> <span id="pvEmail">________________</span></p>
-          <p><strong>Endereço:</strong> <span id="pvEndereco">________________</span></p>
-        </div>
-      </section>
+        <section class="services-section">
+          <h3>3. Serviços contratados</h3>
+          <table class="services-table">
+            <thead><tr><th>Descrição</th><th>Qtde</th><th>Valor unit.</th><th>Total</th></tr></thead>
+            <tbody id="itensBody"></tbody>
+          </table>
+        </section>
 
-      <section class="contract-section">
-        <h3>3. Serviços contratados</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Descrição</th>
-              <th>Qtde</th>
-              <th>Valor unit.</th>
-              <th>Total</th>
-            </tr>
-          </thead>
-          <tbody id="itensTabela"></tbody>
-        </table>
-      </section>
+        <section class="totals-grid">
+          <div class="implementation-card">
+            <h3>4. Implementação</h3>
+            <div class="line"><span>Taxa de implementação:</span><b id="outImplementacao">R$ 450,00</b></div>
+            <div id="descontosBox"></div>
+            <div class="line total"><span>Total de descontos:</span><b id="outDescontos">R$ 0,00</b></div>
+          </div>
+          <div class="monthly-card">
+            <small>5. Mensalidade</small>
+            <strong id="outMensalidade">R$ 149,90</strong>
+            <span>Vencimento: <b id="outVencimento">Todo dia 10</b></span>
+            <span>Validade da proposta: <b id="outValidade">10 dias</b></span>
+          </div>
+        </section>
 
-      <section class="summary-grid">
-        <div class="contract-card">
-          <h3>4. Descontos</h3>
-          <div id="descontosLista" class="line-list"></div>
-          <p class="total-line"><span>Total descontos:</span><strong id="totalDescontos">R$ 0,00</strong></p>
-        </div>
-        <div class="monthly-box">
-          <h3>5. Mensalidade</h3>
-          <strong id="mensalidadeTotal">R$ 0,00</strong>
-          <p id="pvVencimento">Vencimento: Todo dia 10</p>
-          <p id="pvValidade">Validade da proposta: 10 dias</p>
-        </div>
-      </section>
+        <section class="clauses">
+          <h3>6. Condições comerciais resumidas</h3>
+          <p><b>6.1.</b> A Web Automação Santos prestará serviços de implantação, configuração, orientação de uso e suporte técnico relacionados ao PDV Legal, conforme módulos e quantidades descritos neste contrato.</p>
+          <p><b>6.2.</b> A mensalidade contempla o direito de uso dos serviços contratados e suporte conforme canais oficiais de atendimento.</p>
+          <p><b>6.3.</b> O contratante é responsável por manter internet, equipamentos, periféricos, energia elétrica, certificado digital, dados fiscais e demais recursos necessários para o funcionamento do sistema.</p>
+          <p><b>6.4.</b> Serviços não previstos, visitas emergenciais, reinstalações, treinamentos extras, redes, computadores, impressoras ou equipamentos poderão ser orçados separadamente.</p>
+        </section>
 
-      <section class="contract-card text-section">
-        <h3>6. Cláusulas resumidas</h3>
-        <p><strong>6.1.</strong> A Web Automação Santos prestará serviços de configuração, orientação de uso e suporte técnico relacionados ao PDV Legal, conforme os módulos e quantidades descritos neste contrato.</p>
-        <p><strong>6.2.</strong> A mensalidade contempla o direito de uso dos serviços contratados e suporte conforme canais oficiais de atendimento.</p>
-        <p><strong>6.3.</strong> O contratante é responsável por manter internet, equipamentos, periféricos, energia elétrica, certificado digital, dados fiscais e demais recursos necessários para o funcionamento do sistema.</p>
-        <p><strong>6.4.</strong> Serviços não previstos, visitas emergenciais, reinstalações, treinamentos extras, redes, computadores, impressoras ou equipamentos poderão ser orçados separadamente.</p>
-      </section>
+        <section class="sign-grid">
+          <div class="sign-card">
+            <div class="sign-space"></div>
+            <b id="signCliente">Contratante</b>
+            <small><span id="signDocLabel">CPF/CNPJ</span>: <span id="signDoc">________________</span></small>
+          </div>
+          <div class="sign-card">
+            <div class="sign-space logo-watermark">WEB AUTOMAÇÃO</div>
+            <b>Web Automação Santos</b>
+            <small>ALEXANDER EMIDIO BICHIAROV 30642954895</small>
+            <small>CNPJ: 23.349.902/0001-33</small>
+          </div>
+        </section>
 
-      <section class="signature-grid">
-        <div class="signature-card">
-          <div>Assinatura do contratante</div>
-          <strong id="assinaturaCliente">Contratante</strong>
-          <small id="assinaturaDoc">CPF/CNPJ: ________________</small>
-        </div>
-        <div class="signature-card">
-          <div class="logo-muted">WEB AUTOMAÇÃO</div>
-          <strong>Web Automação Santos</strong>
-          <small>ALEXANDER EMIDIO BICHIAROV 30642954895</small>
-          <small>CNPJ: 23.349.902/0001-33</small>
-        </div>
-      </section>
+        <footer class="doc-footer">
+          Documento comercial gerado pela Web Automação Santos • PDV Legal • Orçamento e contrato de serviços
+        </footer>
+      </article>
     </section>
   </main>
   <script src="assets/js/main.js"></script>
