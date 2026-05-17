@@ -18,7 +18,25 @@ const produtos = [
 
 let itens = [{ descricao: "PDV Legal — Plano Base com Retaguarda", quantidade: 1, valor: 149.9 }];
 let descontos = [];
-const numeroContrato = `WEB-${new Date().getFullYear()}-001`;
+const CHAVE_SEQUENCIAL = 'web_automacao_santos_ultimo_orcamento';
+function proximoNumeroSequencial(){
+  const ultimo = Number(localStorage.getItem(CHAVE_SEQUENCIAL) || '0');
+  return ultimo + 1;
+}
+function formatarNumeroContrato(seq){
+  return `WEB-${new Date().getFullYear()}-${String(seq).padStart(3,'0')}`;
+}
+let sequencialContrato = proximoNumeroSequencial();
+let numeroContrato = formatarNumeroContrato(sequencialContrato);
+function registrarContratoEmitido(){
+  const ultimo = Number(localStorage.getItem(CHAVE_SEQUENCIAL) || '0');
+  if(sequencialContrato > ultimo){
+    localStorage.setItem(CHAVE_SEQUENCIAL, String(sequencialContrato));
+  }
+  sequencialContrato = proximoNumeroSequencial();
+  numeroContrato = formatarNumeroContrato(sequencialContrato);
+  atualizar();
+}
 
 const $ = (id) => document.getElementById(id);
 function moeda(valor){ return Number(valor || 0).toLocaleString('pt-BR', {style:'currency', currency:'BRL'}); }
@@ -97,6 +115,8 @@ function atualizar(){
 function preencherProdutos(){
   const select = $('produtoSelecionado');
   select.innerHTML = produtos.map(p => `<option value="${p.nome}">${p.nome}</option>`).join('');
+  select.title = select.value;
+  select.addEventListener('change', () => { select.title = select.value; });
 }
 function adicionarItem(){
   const nome = getValue('produtoSelecionado');
@@ -154,18 +174,8 @@ async function baixarPdf(){
   const a = document.createElement('a');
   a.href = url; a.download = arquivo.name; document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(url);
+  registrarContratoEmitido();
 }
-function baixarArquivo(arquivo){
-  const url = URL.createObjectURL(arquivo);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = arquivo.name;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
-
 async function enviarWhatsApp(){
   const total = totais();
   const texto = [
@@ -179,30 +189,15 @@ async function enviarWhatsApp(){
     `Mensalidade: ${moeda(total.mensalidade)}`,
     `Taxa de implementação: ${moeda(total.implementacaoLiquida)}`
   ].join('\n');
-
-  const botao = $('btnWhatsApp');
-  const textoOriginal = botao ? botao.textContent : '';
-  if(botao){
-    botao.textContent = 'Gerando PDF...';
-    botao.disabled = true;
+  const arquivo = await gerarPdfArquivo();
+  if(arquivo){
+    const url = URL.createObjectURL(arquivo);
+    const a = document.createElement('a');
+    a.href = url; a.download = arquivo.name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    registrarContratoEmitido();
   }
-
-  try {
-    const arquivo = await gerarPdfArquivo();
-    if(!arquivo) return;
-
-    // Fluxo estável para PC, Chrome, Edge e GitHub Pages:
-    // baixa o PDF primeiro e depois abre o WhatsApp com a mensagem pronta.
-    // Evita a janela nativa de compartilhamento, que pode gerar erro em alguns navegadores.
-    baixarArquivo(arquivo);
-    alert('O PDF foi gerado e baixado. Agora o WhatsApp será aberto com a mensagem pronta. Anexe o PDF baixado na conversa.');
-    window.open(`https://wa.me/?text=${encodeURIComponent(texto + '\n\nO PDF foi gerado e baixado. Anexe o arquivo PDF nesta conversa do WhatsApp.')}`, '_blank', 'noopener,noreferrer');
-  } finally {
-    if(botao){
-      botao.textContent = textoOriginal;
-      botao.disabled = false;
-    }
-  }
+  window.open(`https://wa.me/?text=${encodeURIComponent(texto + '\n\nO PDF foi baixado. Anexe o arquivo nesta conversa do WhatsApp.')}`, '_blank', 'noopener,noreferrer');
 }
 function iniciar(){
   preencherProdutos();
