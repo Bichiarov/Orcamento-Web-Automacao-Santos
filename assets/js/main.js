@@ -155,6 +155,17 @@ async function baixarPdf(){
   a.href = url; a.download = arquivo.name; document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(url);
 }
+function baixarArquivo(arquivo){
+  const url = URL.createObjectURL(arquivo);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = arquivo.name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 async function enviarWhatsApp(){
   const total = totais();
   const texto = [
@@ -168,14 +179,30 @@ async function enviarWhatsApp(){
     `Mensalidade: ${moeda(total.mensalidade)}`,
     `Taxa de implementação: ${moeda(total.implementacaoLiquida)}`
   ].join('\n');
-  const arquivo = await gerarPdfArquivo();
-  if(arquivo){
-    const url = URL.createObjectURL(arquivo);
-    const a = document.createElement('a');
-    a.href = url; a.download = arquivo.name; document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+  const botao = $('btnWhatsApp');
+  const textoOriginal = botao ? botao.textContent : '';
+  if(botao){
+    botao.textContent = 'Gerando PDF...';
+    botao.disabled = true;
   }
-  window.open(`https://wa.me/?text=${encodeURIComponent(texto + '\n\nO PDF foi baixado. Anexe o arquivo nesta conversa do WhatsApp.')}`, '_blank', 'noopener,noreferrer');
+
+  try {
+    const arquivo = await gerarPdfArquivo();
+    if(!arquivo) return;
+
+    // Fluxo estável para PC, Chrome, Edge e GitHub Pages:
+    // baixa o PDF primeiro e depois abre o WhatsApp com a mensagem pronta.
+    // Evita a janela nativa de compartilhamento, que pode gerar erro em alguns navegadores.
+    baixarArquivo(arquivo);
+    alert('O PDF foi gerado e baixado. Agora o WhatsApp será aberto com a mensagem pronta. Anexe o PDF baixado na conversa.');
+    window.open(`https://wa.me/?text=${encodeURIComponent(texto + '\n\nO PDF foi gerado e baixado. Anexe o arquivo PDF nesta conversa do WhatsApp.')}`, '_blank', 'noopener,noreferrer');
+  } finally {
+    if(botao){
+      botao.textContent = textoOriginal;
+      botao.disabled = false;
+    }
+  }
 }
 function iniciar(){
   preencherProdutos();
