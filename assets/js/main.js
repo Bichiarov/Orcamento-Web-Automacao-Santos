@@ -189,14 +189,37 @@ async function enviarWhatsApp(){
     `Mensalidade: ${moeda(total.mensalidade)}`,
     `Taxa de implementação: ${moeda(total.implementacaoLiquida)}`
   ].join('\n');
+
   const arquivo = await gerarPdfArquivo();
-  if(arquivo){
-    const url = URL.createObjectURL(arquivo);
-    const a = document.createElement('a');
-    a.href = url; a.download = arquivo.name; document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    registrarContratoEmitido();
+  if(!arquivo) return;
+
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
+  const podeCompartilharArquivo = navigator.canShare && navigator.canShare({ files: [arquivo] });
+
+  if(isMobile && podeCompartilharArquivo){
+    try{
+      await navigator.share({
+        title: 'Orçamento PDV Legal — Web Automação Santos',
+        text: texto,
+        files: [arquivo]
+      });
+      registrarContratoEmitido();
+      return;
+    }catch(e){
+      console.warn('Compartilhamento nativo cancelado ou indisponível. Usando fallback.', e);
+    }
   }
+
+  const url = URL.createObjectURL(arquivo);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = arquivo.name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  registrarContratoEmitido();
+
   window.open(`https://wa.me/?text=${encodeURIComponent(texto + '\n\nO orçamento oficial em PDF A4 foi baixado no dispositivo. Anexe esse arquivo nesta conversa do WhatsApp.')}`, '_blank', 'noopener,noreferrer');
 }
 function iniciar(){
