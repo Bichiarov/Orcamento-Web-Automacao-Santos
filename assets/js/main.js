@@ -154,18 +154,39 @@ async function gerarPdfArquivo(){
   }
   atualizar();
   const elemento = $('printArea');
-  const canvas = await html2canvas(elemento, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
-  const imgData = canvas.toDataURL('image/jpeg', 0.98);
-  const { jsPDF } = window.jspdf;
-  const pdf = new jsPDF('p', 'mm', 'a4');
-  const pageWidth = 210, pageHeight = 297, margin = 5;
-  const usableWidth = pageWidth - margin * 2, usableHeight = pageHeight - margin * 2;
-  const ratio = canvas.width / canvas.height;
-  let imgWidth = usableWidth, imgHeight = imgWidth / ratio;
-  if(imgHeight > usableHeight){ imgHeight = usableHeight; imgWidth = imgHeight * ratio; }
-  pdf.addImage(imgData, 'JPEG', (pageWidth-imgWidth)/2, (pageHeight-imgHeight)/2, imgWidth, imgHeight);
-  const cliente = (getValue('clienteNome') || 'cliente').replace(/[^a-z0-9]/gi, '_').toLowerCase();
-  return new File([pdf.output('blob')], `orcamento_pdv_legal_${cliente}_${numeroContrato}.pdf`, { type: 'application/pdf' });
+
+  // Clona a via de impressão em tamanho A4 fixo. Isso evita que o PDF mobile
+  // seja gerado no formato estreito da tela do celular.
+  const clone = elemento.cloneNode(true);
+  clone.id = 'printAreaExport';
+  clone.classList.add('pdf-export');
+  document.body.appendChild(clone);
+
+  try {
+    const canvas = await html2canvas(clone, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#ffffff',
+      width: 794,
+      height: 1123,
+      windowWidth: 794,
+      windowHeight: 1123,
+      scrollX: 0,
+      scrollY: 0
+    });
+
+    const imgData = canvas.toDataURL('image/jpeg', 0.98);
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'a4');
+
+    // Preenche exatamente uma página A4.
+    pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+
+    const cliente = (getValue('clienteNome') || 'cliente').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+    return new File([pdf.output('blob')], `orcamento_pdv_legal_${cliente}_${numeroContrato}.pdf`, { type: 'application/pdf' });
+  } finally {
+    clone.remove();
+  }
 }
 async function baixarPdf(){
   const arquivo = await gerarPdfArquivo();
