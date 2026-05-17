@@ -179,7 +179,7 @@ async function baixarPdf(){
 async function enviarWhatsApp(){
   const total = totais();
   const texto = [
-    'Olá! Segue em anexo a proposta/contrato de serviços PDV Legal da Web Automação Santos.',
+    'Olá! Tudo bem? Somos da Web Automação Santos. Segue o orçamento comercial do PDV Legal preparado para sua empresa.',
     '',
     `Cliente: ${getValue('clienteNome') || 'Não informado'}`,
     `${tipoDocumento(getValue('clienteDocumento'))}: ${getValue('clienteDocumento') || 'Não informado'}`,
@@ -197,7 +197,7 @@ async function enviarWhatsApp(){
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     registrarContratoEmitido();
   }
-  window.open(`https://wa.me/?text=${encodeURIComponent(texto + '\n\nO PDF foi baixado. Anexe o arquivo nesta conversa do WhatsApp.')}`, '_blank', 'noopener,noreferrer');
+  window.open(`https://wa.me/?text=${encodeURIComponent(texto + '\n\nO orçamento oficial em PDF A4 foi baixado no dispositivo. Anexe esse arquivo nesta conversa do WhatsApp.')}`, '_blank', 'noopener,noreferrer');
 }
 function iniciar(){
   preencherProdutos();
