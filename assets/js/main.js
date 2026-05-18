@@ -19,7 +19,7 @@ try {
 }
 
 const produtos = [
-  { nome: "PDV Legal — Plano Base com Retaguarda", valor: 149.9 },
+  { nome: "PDV Legal — Plano Base com Retaguarda", valor: 159.9 },
   { nome: "PDV adicional", valor: 49.9 },
   { nome: "Estoque", valor: 20 },
   { nome: "Financeiro", valor: 20 },
@@ -36,7 +36,7 @@ const produtos = [
   { nome: "KDS TokMenu", valor: 39.9 }
 ];
 
-let itens = [{ descricao: "PDV Legal — Plano Base com Retaguarda", quantidade: 1, valor: 149.9 }];
+let itens = [{ descricao: "PDV Legal — Plano Base com Retaguarda", quantidade: 1, valor: 159.9 }];
 let descontos = [];
 let orcamentoAtualId = null;
 let numeroConfirmadoNoBanco = false;
@@ -188,7 +188,7 @@ function adicionarDesconto(){
   atualizar();
 }
 function limparContrato(){
-  itens = [{ descricao: "PDV Legal — Plano Base com Retaguarda", quantidade: 1, valor: 149.9 }];
+  itens = [{ descricao: "PDV Legal — Plano Base com Retaguarda", quantidade: 1, valor: 159.9 }];
   descontos = [];
   iniciarNovoOrcamento();
   atualizar();
@@ -388,14 +388,28 @@ async function listarOrcamentos(mostrar=true){
   mostrarListaOrcamentos(mostrar);
   lista.innerHTML = '<div class="saved-empty">Carregando orçamentos...</div>';
   try{
-    const snap = await db.collection('orcamentos').orderBy('criadoEm','desc').limit(10).get();
-    if(snap.empty){
+    let docs = [];
+    try{
+      const snap = await db.collection('orcamentos').orderBy('criadoEm','desc').limit(20).get({ source: 'server' });
+      snap.forEach(doc => docs.push({ id: doc.id, data: doc.data() }));
+    }catch(erroOrdenado){
+      console.warn('Busca ordenada falhou. Tentando busca simples sem orderBy:', erroOrdenado);
+      const snap = await db.collection('orcamentos').limit(20).get({ source: 'server' });
+      snap.forEach(doc => docs.push({ id: doc.id, data: doc.data() }));
+      docs.sort((a,b) => {
+        const na = String(a.data.numero || a.id || '');
+        const nb = String(b.data.numero || b.id || '');
+        return nb.localeCompare(na, 'pt-BR', { numeric: true });
+      });
+    }
+
+    if(!docs.length){
       lista.innerHTML = '<div class="saved-empty">Nenhum orçamento salvo ainda.</div>';
       return;
     }
+
     lista.innerHTML = '';
-    snap.forEach(doc => {
-      const d = doc.data();
+    docs.forEach(({ id, data: d }) => {
       const el = document.createElement('div');
       el.className = 'saved-card';
       el.innerHTML = `
@@ -404,14 +418,14 @@ async function listarOrcamentos(mostrar=true){
           <span>${d.cliente?.nome || 'Cliente não informado'}</span>
           <small>${d.data ? dataBR(d.data) : ''} • Mensalidade ${moeda(d.totais?.totalMensalidade || 0)}</small>
         </div>
-        <button type="button" data-id="${doc.id}">Abrir</button>
+        <button type="button" data-id="${id}">Abrir</button>
       `;
-      el.querySelector('button').addEventListener('click', () => carregarOrcamento(doc.id));
+      el.querySelector('button').addEventListener('click', () => carregarOrcamento(id));
       lista.appendChild(el);
     });
   }catch(erro){
     console.error('Erro ao listar orçamentos:', erro);
-    lista.innerHTML = '<div class="saved-empty">Erro ao buscar orçamentos. Verifique as regras do Firestore.</div>';
+    lista.innerHTML = `<div class="saved-empty">Erro ao buscar orçamentos: ${erro.message || erro}. Verifique as regras do Firestore e se o app no PC está usando a versão atualizada.</div>`;
   }
 }
 
@@ -438,7 +452,7 @@ async function carregarOrcamento(id){
       descricao: item.descricao,
       quantidade: Number(item.quantidade || 1),
       valor: Number(item.valorUnitario || item.valor || 0)
-    })) : [{ descricao: "PDV Legal — Plano Base com Retaguarda", quantidade: 1, valor: 149.9 }];
+    })) : [{ descricao: "PDV Legal — Plano Base com Retaguarda", quantidade: 1, valor: 159.9 }];
     descontos = Array.isArray(d.descontos) ? d.descontos.map(item => ({
       descricao: item.descricao,
       valor: Number(item.valor || 0),
