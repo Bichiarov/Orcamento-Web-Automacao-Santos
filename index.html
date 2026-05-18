@@ -64,6 +64,14 @@
           <button class="btn btn-dark" id="btnRemoverUltimo">Remover último item</button>
         </div>
         <button class="btn btn-green" id="btnWhatsApp">Enviar orçamento por WhatsApp</button>
+        <div class="actions two">
+          <button class="btn btn-primary" id="btnSalvarOrcamento">Salvar orçamento</button>
+          <button class="btn btn-outline" id="btnBuscarOrcamentos">Buscar salvos</button>
+        </div>
+        <div class="saved-list" id="orcamentosSalvos" style="display:none;">
+          <h2>Orçamentos salvos</h2>
+          <div id="listaOrcamentos"></div>
+        </div>
       </div>
     </aside>
 
@@ -160,6 +168,8 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
   <script src="assets/js/main.js"></script>
 </body>
 </html>

@@ -1,3 +1,23 @@
+// Firebase — Web Automação Santos / PDV Legal
+const firebaseConfig = {
+  apiKey: "AIzaSyDv5O_X7F_NDYEoZYkfzgg5j-WLkNK-QLk",
+  authDomain: "web-automacao-santos-pdvlegal.firebaseapp.com",
+  projectId: "web-automacao-santos-pdvlegal",
+  storageBucket: "web-automacao-santos-pdvlegal.firebasestorage.app",
+  messagingSenderId: "228810100304",
+  appId: "1:228810100304:web:eca86e1f9b889484a20b55"
+};
+
+let db = null;
+try {
+  if (window.firebase) {
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+  }
+} catch (erro) {
+  console.warn('Firebase não inicializado:', erro);
+}
+
 const produtos = [
   { nome: "PDV Legal — Plano Base com Retaguarda", valor: 149.9 },
   { nome: "PDV adicional", valor: 49.9 },
@@ -243,6 +263,143 @@ async function enviarWhatsApp(){
 
   window.open(`https://wa.me/?text=${encodeURIComponent(texto + '\n\nO orçamento oficial em PDF A4 foi baixado no dispositivo. Anexe esse arquivo nesta conversa do WhatsApp.')}`, '_blank', 'noopener,noreferrer');
 }
+
+function dadosAtuaisDoOrcamento(){
+  const total = totais();
+  return {
+    numero: numeroContrato,
+    data: getValue('dataContrato'),
+    validade: getValue('validade') || '10 dias',
+    vencimento: getValue('vencimento') || 'Todo dia 10',
+    status: 'Aberto',
+    cliente: {
+      nome: getValue('clienteNome'),
+      documento: getValue('clienteDocumento'),
+      tipoDocumento: tipoDocumento(getValue('clienteDocumento')),
+      responsavel: getValue('clienteResponsavel'),
+      telefone: getValue('clienteTelefone'),
+      email: getValue('clienteEmail'),
+      endereco: getValue('clienteEndereco')
+    },
+    itens: itens.map(item => ({
+      descricao: item.descricao,
+      quantidade: Number(item.quantidade || 0),
+      valorUnitario: Number(item.valor || 0),
+      valorTotal: Number(item.quantidade || 0) * Number(item.valor || 0)
+    })),
+    descontos: descontos.map(item => ({
+      descricao: item.descricao,
+      valor: Number(item.valor || 0),
+      tipo: item.tipo || 'mensalidade'
+    })),
+    totais: {
+      subtotalMensalidade: total.subtotal,
+      descontoMensalidade: total.totalDescontosMensalidade,
+      taxaImplementacao: Number(getValue('implementacao') || 0),
+      descontoImplementacao: total.totalDescontosImplementacao,
+      totalMensalidade: total.mensalidade,
+      totalImplementacao: total.implementacaoLiquida
+    },
+    atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+  };
+}
+
+async function salvarOrcamento(){
+  if(!db){
+    alert('Firebase não carregou. Verifique sua conexão e se o Firestore está ativado.');
+    return;
+  }
+  try{
+    atualizar();
+    const dados = dadosAtuaisDoOrcamento();
+    dados.criadoEm = firebase.firestore.FieldValue.serverTimestamp();
+    const ref = await db.collection('orcamentos').add(dados);
+    alert(`Orçamento ${numeroContrato} salvo com sucesso.`);
+    await listarOrcamentos(false);
+    return ref.id;
+  }catch(erro){
+    console.error('Erro ao salvar orçamento:', erro);
+    alert('Não foi possível salvar o orçamento no Firebase. Verifique as regras do Firestore e a conexão.');
+  }
+}
+
+function mostrarListaOrcamentos(mostrar=true){
+  const box = $('orcamentosSalvos');
+  if(box) box.style.display = mostrar ? 'block' : 'none';
+}
+
+async function listarOrcamentos(mostrar=true){
+  if(!db){
+    alert('Firebase não carregou. Verifique sua conexão e se o Firestore está ativado.');
+    return;
+  }
+  const lista = $('listaOrcamentos');
+  if(!lista) return;
+  mostrarListaOrcamentos(mostrar);
+  lista.innerHTML = '<div class="saved-empty">Carregando orçamentos...</div>';
+  try{
+    const snap = await db.collection('orcamentos').orderBy('criadoEm','desc').limit(10).get();
+    if(snap.empty){
+      lista.innerHTML = '<div class="saved-empty">Nenhum orçamento salvo ainda.</div>';
+      return;
+    }
+    lista.innerHTML = '';
+    snap.forEach(doc => {
+      const d = doc.data();
+      const el = document.createElement('div');
+      el.className = 'saved-card';
+      el.innerHTML = `
+        <div>
+          <strong>${d.numero || 'Sem número'}</strong>
+          <span>${d.cliente?.nome || 'Cliente não informado'}</span>
+          <small>${d.data ? dataBR(d.data) : ''} • Mensalidade ${moeda(d.totais?.totalMensalidade || 0)}</small>
+        </div>
+        <button type="button" data-id="${doc.id}">Abrir</button>
+      `;
+      el.querySelector('button').addEventListener('click', () => carregarOrcamento(doc.id));
+      lista.appendChild(el);
+    });
+  }catch(erro){
+    console.error('Erro ao listar orçamentos:', erro);
+    lista.innerHTML = '<div class="saved-empty">Erro ao buscar orçamentos. Verifique as regras do Firestore.</div>';
+  }
+}
+
+async function carregarOrcamento(id){
+  if(!db) return;
+  try{
+    const doc = await db.collection('orcamentos').doc(id).get();
+    if(!doc.exists){ alert('Orçamento não encontrado.'); return; }
+    const d = doc.data();
+    numeroContrato = d.numero || numeroContrato;
+    $('clienteNome').value = d.cliente?.nome || '';
+    $('clienteDocumento').value = d.cliente?.documento || '';
+    $('clienteResponsavel').value = d.cliente?.responsavel || '';
+    $('clienteTelefone').value = d.cliente?.telefone || '';
+    $('clienteEmail').value = d.cliente?.email || '';
+    $('clienteEndereco').value = d.cliente?.endereco || '';
+    $('dataContrato').value = d.data || hojeISO();
+    $('validade').value = d.validade || '10 dias';
+    $('vencimento').value = d.vencimento || 'Todo dia 10';
+    $('implementacao').value = d.totais?.taxaImplementacao ?? 450;
+    itens = Array.isArray(d.itens) && d.itens.length ? d.itens.map(item => ({
+      descricao: item.descricao,
+      quantidade: Number(item.quantidade || 1),
+      valor: Number(item.valorUnitario || item.valor || 0)
+    })) : [{ descricao: "PDV Legal — Plano Base com Retaguarda", quantidade: 1, valor: 149.9 }];
+    descontos = Array.isArray(d.descontos) ? d.descontos.map(item => ({
+      descricao: item.descricao,
+      valor: Number(item.valor || 0),
+      tipo: item.tipo || 'mensalidade'
+    })) : [];
+    atualizar();
+    mostrarListaOrcamentos(false);
+  }catch(erro){
+    console.error('Erro ao carregar orçamento:', erro);
+    alert('Não foi possível carregar o orçamento.');
+  }
+}
+
 function iniciar(){
   preencherProdutos();
   $('dataContrato').value = hojeISO();
@@ -256,6 +413,8 @@ function iniciar(){
   $('btnRemoverUltimo').addEventListener('click', removerUltimoItem);
   $('btnGerarPdf').addEventListener('click', baixarPdf);
   $('btnWhatsApp').addEventListener('click', enviarWhatsApp);
+  $('btnSalvarOrcamento').addEventListener('click', salvarOrcamento);
+  $('btnBuscarOrcamentos').addEventListener('click', () => listarOrcamentos(true));
   atualizar();
 }
 document.addEventListener('DOMContentLoaded', iniciar);

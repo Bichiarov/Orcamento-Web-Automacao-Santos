@@ -111,3 +111,5 @@
   .section-title .actions.two{grid-template-columns:1fr;}
   .section-title .discounts-row label span{min-height:auto;}
 }
+
+.saved-list{border-top:1px solid #e2e8f0;margin-top:4px;padding-top:14px}.saved-list h2{font-size:15px;margin:0 0 10px;font-weight:900}.saved-card{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid #e2e8f0;border-radius:12px;padding:10px;margin-bottom:8px;background:#f8fafc}.saved-card strong,.saved-card span,.saved-card small{display:block}.saved-card strong{font-size:12px}.saved-card span{font-size:11px;color:#334155;margin-top:2px}.saved-card small{font-size:10px;color:#64748b;margin-top:2px}.saved-card button{border:0;background:#2563eb;color:#fff;font-weight:900;border-radius:9px;padding:8px 10px;cursor:pointer}.saved-empty{font-size:12px;color:#64748b;background:#f8fafc;border:1px dashed #cbd5e1;border-radius:12px;padding:12px;text-align:center}
