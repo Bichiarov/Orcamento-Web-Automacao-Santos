@@ -38,24 +38,53 @@ const produtos = [
 
 let itens = [{ descricao: "PDV Legal — Plano Base com Retaguarda", quantidade: 1, valor: 149.9 }];
 let descontos = [];
-const CHAVE_SEQUENCIAL = 'web_automacao_santos_ultimo_orcamento';
-function proximoNumeroSequencial(){
-  const ultimo = Number(localStorage.getItem(CHAVE_SEQUENCIAL) || '0');
-  return ultimo + 1;
+let orcamentoAtualId = null;
+let numeroConfirmadoNoBanco = false;
+
+function formatarNumeroContrato(seq, ano = new Date().getFullYear()){
+  return `WEB-${ano}-${String(seq).padStart(4,'0')}`;
 }
-function formatarNumeroContrato(seq){
-  return `WEB-${new Date().getFullYear()}-${String(seq).padStart(3,'0')}`;
+
+function numeroPendente(){
+  return `WEB-${new Date().getFullYear()}-PENDENTE`;
 }
-let sequencialContrato = proximoNumeroSequencial();
-let numeroContrato = formatarNumeroContrato(sequencialContrato);
-function registrarContratoEmitido(){
-  const ultimo = Number(localStorage.getItem(CHAVE_SEQUENCIAL) || '0');
-  if(sequencialContrato > ultimo){
-    localStorage.setItem(CHAVE_SEQUENCIAL, String(sequencialContrato));
+
+let numeroContrato = numeroPendente();
+
+async function reservarNumeroOrcamento(){
+  if(numeroConfirmadoNoBanco && numeroContrato && !numeroContrato.includes('PENDENTE')){
+    return numeroContrato;
   }
-  sequencialContrato = proximoNumeroSequencial();
-  numeroContrato = formatarNumeroContrato(sequencialContrato);
+  if(!db){
+    throw new Error('Firebase não carregou. Não é possível gerar numeração única.');
+  }
+
+  const ano = new Date().getFullYear();
+  const controleRef = db.collection('controle').doc(`numeracao_${ano}`);
+  let novoNumero = null;
+
+  await db.runTransaction(async (transaction) => {
+    const snap = await transaction.get(controleRef);
+    const ultimo = snap.exists ? Number(snap.data().ultimoNumero || 0) : 0;
+    const proximo = ultimo + 1;
+    novoNumero = formatarNumeroContrato(proximo, ano);
+    transaction.set(controleRef, {
+      ultimoNumero: proximo,
+      ano,
+      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+  });
+
+  numeroContrato = novoNumero;
+  numeroConfirmadoNoBanco = true;
   atualizar();
+  return numeroContrato;
+}
+
+function iniciarNovoOrcamento(){
+  orcamentoAtualId = null;
+  numeroConfirmadoNoBanco = false;
+  numeroContrato = numeroPendente();
 }
 
 const $ = (id) => document.getElementById(id);
@@ -161,6 +190,7 @@ function adicionarDesconto(){
 function limparContrato(){
   itens = [{ descricao: "PDV Legal — Plano Base com Retaguarda", quantidade: 1, valor: 149.9 }];
   descontos = [];
+  iniciarNovoOrcamento();
   atualizar();
 }
 function removerUltimoItem(){
@@ -209,15 +239,28 @@ async function gerarPdfArquivo(){
   }
 }
 async function baixarPdf(){
+  try {
+    await reservarNumeroOrcamento();
+  } catch(erro) {
+    console.error('Erro ao reservar número:', erro);
+    alert('Não foi possível gerar uma numeração única. Verifique o Firebase/Firestore.');
+    return;
+  }
   const arquivo = await gerarPdfArquivo();
   if(!arquivo) return;
   const url = URL.createObjectURL(arquivo);
   const a = document.createElement('a');
   a.href = url; a.download = arquivo.name; document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(url);
-  registrarContratoEmitido();
 }
 async function enviarWhatsApp(){
+  try {
+    await reservarNumeroOrcamento();
+  } catch(erro) {
+    console.error('Erro ao reservar número:', erro);
+    alert('Não foi possível gerar uma numeração única. Verifique o Firebase/Firestore.');
+    return;
+  }
   const total = totais();
   const texto = [
     'Olá! Tudo bem? Somos da Web Automação Santos. Segue o orçamento comercial do PDV Legal preparado para sua empresa.',
@@ -244,7 +287,6 @@ async function enviarWhatsApp(){
         text: texto,
         files: [arquivo]
       });
-      registrarContratoEmitido();
       return;
     }catch(e){
       console.warn('Compartilhamento nativo cancelado ou indisponível. Usando fallback.', e);
@@ -259,7 +301,6 @@ async function enviarWhatsApp(){
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-  registrarContratoEmitido();
 
   window.open(`https://wa.me/?text=${encodeURIComponent(texto + '\n\nO orçamento oficial em PDF A4 foi baixado no dispositivo. Anexe esse arquivo nesta conversa do WhatsApp.')}`, '_blank', 'noopener,noreferrer');
 }
@@ -310,13 +351,22 @@ async function salvarOrcamento(){
     return;
   }
   try{
+    await reservarNumeroOrcamento();
     atualizar();
     const dados = dadosAtuaisDoOrcamento();
-    dados.criadoEm = firebase.firestore.FieldValue.serverTimestamp();
-    const ref = await db.collection('orcamentos').add(dados);
+    const docId = numeroContrato;
+    const ref = db.collection('orcamentos').doc(docId);
+    const existente = await ref.get();
+    if(!existente.exists){
+      dados.criadoEm = firebase.firestore.FieldValue.serverTimestamp();
+    } else {
+      dados.criadoEm = existente.data().criadoEm || firebase.firestore.FieldValue.serverTimestamp();
+    }
+    await ref.set(dados, { merge: true });
+    orcamentoAtualId = docId;
     alert(`Orçamento ${numeroContrato} salvo com sucesso.`);
     await listarOrcamentos(false);
-    return ref.id;
+    return docId;
   }catch(erro){
     console.error('Erro ao salvar orçamento:', erro);
     alert('Não foi possível salvar o orçamento no Firebase. Verifique as regras do Firestore e a conexão.');
@@ -372,6 +422,8 @@ async function carregarOrcamento(id){
     if(!doc.exists){ alert('Orçamento não encontrado.'); return; }
     const d = doc.data();
     numeroContrato = d.numero || numeroContrato;
+    numeroConfirmadoNoBanco = !!d.numero;
+    orcamentoAtualId = id;
     $('clienteNome').value = d.cliente?.nome || '';
     $('clienteDocumento').value = d.cliente?.documento || '';
     $('clienteResponsavel').value = d.cliente?.responsavel || '';
