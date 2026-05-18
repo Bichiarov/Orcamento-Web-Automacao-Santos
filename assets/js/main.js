@@ -40,6 +40,7 @@ let itens = [{ descricao: "PDV Legal — Plano Base com Retaguarda", quantidade:
 let descontos = [];
 let orcamentoAtualId = null;
 let numeroConfirmadoNoBanco = false;
+let precosProdutos = {};
 
 function formatarNumeroContrato(seq, ano = new Date().getFullYear()){
   return `WEB-${ano}-${String(seq).padStart(4,'0')}`;
@@ -162,16 +163,40 @@ function atualizar(){
   }
 }
 function preencherProdutos(){
+  precosProdutos = Object.fromEntries(produtos.map(p => [p.nome, p.valor]));
   const select = $('produtoSelecionado');
   select.innerHTML = produtos.map(p => `<option value="${p.nome}">${p.nome}</option>`).join('');
   select.title = select.value;
   select.addEventListener('change', () => { select.title = select.value; });
+  renderizarAjustesPreco();
+}
+
+function renderizarAjustesPreco(){
+  const lista = $('listaPrecos');
+  if(!lista) return;
+  lista.innerHTML = produtos.map(p => `
+    <div class="price-item">
+      <span>${p.nome}</span>
+      <input type="number" step="0.01" data-produto="${p.nome}" value="${Number(precosProdutos[p.nome] ?? p.valor).toFixed(2)}">
+    </div>
+  `).join('');
+  lista.querySelectorAll('input[data-produto]').forEach(input => {
+    input.addEventListener('input', () => {
+      precosProdutos[input.dataset.produto] = Number(input.value || 0);
+    });
+  });
+}
+
+function restaurarPrecosPadrao(){
+  precosProdutos = Object.fromEntries(produtos.map(p => [p.nome, p.valor]));
+  renderizarAjustesPreco();
 }
 function adicionarItem(){
   const nome = getValue('produtoSelecionado');
   const produto = produtos.find(p => p.nome === nome);
   const quantidade = Math.max(1, Number(getValue('quantidade') || 1));
-  itens.push({ descricao: produto.nome, quantidade, valor: produto.valor });
+  const valorAjustado = Number(precosProdutos[produto.nome] ?? produto.valor);
+  itens.push({ descricao: produto.nome, quantidade, valor: valorAjustado });
   atualizar();
 }
 function adicionarDesconto(){
@@ -188,7 +213,7 @@ function adicionarDesconto(){
   atualizar();
 }
 function limparContrato(){
-  itens = [{ descricao: "PDV Legal — Plano Base com Retaguarda", quantidade: 1, valor: 159.9 }];
+  itens = [{ descricao: "PDV Legal — Plano Base com Retaguarda", quantidade: 1, valor: Number(precosProdutos["PDV Legal — Plano Base com Retaguarda"] ?? 159.9) }];
   descontos = [];
   iniciarNovoOrcamento();
   atualizar();
@@ -474,6 +499,11 @@ function iniciar(){
   $('descontoTipo').addEventListener('change', atualizar);
   $('clienteDocumento').addEventListener('input', (e) => { e.target.value = formatarDocumento(e.target.value); atualizar(); });
   $('btnAdicionarItem').addEventListener('click', adicionarItem);
+  $('btnAjustePrecos').addEventListener('click', () => {
+    const box = $('ajustePrecos');
+    box.style.display = box.style.display === 'none' ? 'block' : 'none';
+  });
+  $('btnRestaurarPrecos').addEventListener('click', restaurarPrecosPadrao);
   $('btnAdicionarDesconto').addEventListener('click', adicionarDesconto);
   $('btnLimpar').addEventListener('click', limparContrato);
   $('btnRemoverUltimo').addEventListener('click', removerUltimoItem);
