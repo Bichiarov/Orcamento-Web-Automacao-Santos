@@ -3,185 +3,224 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Web Automação Santos | Orçamento e Contrato PDV Legal</title>
+  <title>Web Automação Santos | Orçamentos PDV Legal</title>
   <link rel="stylesheet" href="assets/css/styles.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
-  <main class="layout">
-    <aside class="panel no-print">
-      <h1>Novo contrato</h1>
-      <p class="hint">App web para orçamentos e envio de contratos PDV Legal da Web Automação Santos.</p>
-
-      <div class="form">
-        <div class="row">
-          <label><span>Cliente / Loja</span><input id="clienteNome" placeholder="Nome do cliente"></label>
-          <label><span>Data</span><input id="dataContrato" type="date"></label>
-        </div>
-
-        <div class="row">
-          <label><span id="docLabel">CPF/CNPJ</span><input id="clienteDocumento" placeholder="CPF ou CNPJ"></label>
-          <label><span>Telefone</span><input id="clienteTelefone" placeholder="WhatsApp"></label>
-        </div>
-
-        <label><span>Responsável</span><input id="clienteResponsavel" placeholder="Responsável"></label>
-        <label><span>E-mail</span><input id="clienteEmail" placeholder="E-mail"></label>
-        <label><span>Endereço</span><input id="clienteEndereco" placeholder="Endereço completo"></label>
-
-        <div class="row-item">
-          <label><span>Item da tabela</span><select id="produtoSelecionado"></select></label>
-          <label><span>Qtd</span><input id="quantidade" type="number" min="1" value="1"></label>
-        </div>
-
-        <button class="btn btn-primary" id="btnAdicionarItem">Adicionar item</button>
-
-        <button class="btn btn-outline" id="btnAjustePrecos">Ajuste de preço</button>
-        <div class="price-adjust" id="ajustePrecos" style="display:none;">
-          <div class="price-head">
-            <div>
-              <h2>Ajustes de preços</h2>
-              <p>Altere os valores antes de adicionar os itens ao orçamento.</p>
-            </div>
-            <button class="mini-btn" id="btnRestaurarPrecos" type="button">Restaurar</button>
-          </div>
-          <div class="price-list" id="listaPrecos"></div>
-        </div>
-
-        <div class="section-title">
-          <h2>Descontos</h2>
-          <p>Escolha se o desconto será aplicado na implementação ou na mensalidade.</p>
-          <label class="full-field"><span>Aplicar desconto em</span>
-            <select id="descontoTipo">
-              <option value="mensalidade">Mensalidade</option>
-              <option value="implementacao">Implementação</option>
-            </select>
-          </label>
-          <div class="row discounts-row">
-            <label><span>Descrição do desconto</span><input id="descontoDescricao" placeholder="Ex.: Desconto implantação"></label>
-            <label><span>Valor do desconto</span><input id="descontoValor" type="number" min="0" placeholder="Ex.: 450"></label>
-          </div>
-          <div class="actions two">
-            <button class="btn btn-dark" id="btnAdicionarDesconto">Adicionar desconto</button>
-            <button class="btn btn-danger" id="btnLimpar">Limpar orçamento</button>
-          </div>
-        </div>
-
-        <div class="row">
-          <label><span>Tempo proposta</span><input id="validade" value="10 dias"></label>
-          <label><span>Vencimento</span><input id="vencimento" value="Todo dia 10"></label>
-        </div>
-
-        <label><span>Taxa de implementação</span><input id="implementacao" type="number" value="450"></label>
-        <div class="actions two">
-          <button class="btn btn-outline" id="btnGerarPdf">Gerar PDF</button>
-          <button class="btn btn-dark" id="btnRemoverUltimo">Remover último item</button>
-        </div>
-        <button class="btn btn-green" id="btnWhatsApp">Enviar orçamento por WhatsApp</button>
-        <div class="actions two">
-          <button class="btn btn-primary" id="btnSalvarOrcamento">Salvar orçamento</button>
-          <button class="btn btn-outline" id="btnBuscarOrcamentos">Buscar salvos</button>
-        </div>
-        <div class="saved-list" id="orcamentosSalvos" style="display:none;">
-          <h2>Orçamentos salvos</h2>
-          <div id="listaOrcamentos"></div>
-        </div>
+  <main class="app-shell">
+    <aside class="sidebar no-print">
+      <div class="sidebar-head">
+        <h1>Novo orçamento</h1>
+        <p>Preencha os dados, escolha os produtos e gere orçamento + contrato da Web Automação Santos.</p>
       </div>
+
+      <section class="form-grid two">
+        <label><span>Cliente / Loja</span><input id="clienteNome" placeholder="Nome do cliente" /></label>
+        <label><span>Data</span><input id="data" type="date" /></label>
+      </section>
+
+      <section class="form-grid two">
+        <label><span id="docLabel">CPF/CNPJ</span><input id="documento" placeholder="CPF ou CNPJ" /></label>
+        <label><span>Telefone</span><input id="telefone" placeholder="WhatsApp" /></label>
+      </section>
+
+      <label class="field"><span>Responsável</span><input id="responsavel" placeholder="Responsável" /></label>
+      <label class="field"><span>E-mail</span><input id="email" placeholder="E-mail" /></label>
+      <label class="field"><span>Endereço</span><input id="endereco" placeholder="Endereço completo" /></label>
+
+      <section class="item-row">
+        <label><span>Item da tabela</span><select id="produtoSelecionado"></select></label>
+        <label><span>Qtd.</span><input id="quantidade" type="number" min="1" value="1" /></label>
+      </section>
+
+      <div class="button-row two">
+        <button id="addItem" class="btn primary">Adicionar item</button>
+        <button id="clearBudget" class="btn danger-light">Limpar orçamento</button>
+      </div>
+
+      <button id="togglePrices" class="btn outline full">Ajuste de preço</button>
+      <section id="pricePanel" class="price-panel hidden">
+        <div class="price-panel-head">
+          <div>
+            <strong>Ajustes de preços</strong>
+            <small>Altere os valores antes de adicionar os itens.</small>
+          </div>
+          <button id="resetPrices" class="mini-btn">Restaurar</button>
+        </div>
+        <div id="priceList" class="price-list"></div>
+      </section>
+
+      <label class="field"><span>Taxa de implementação</span><input id="implementacao" type="number" step="0.01" value="450" /></label>
+
+      <section class="discounts">
+        <h2>Descontos</h2>
+        <p>Escolha onde aplicar o desconto antes de adicionar.</p>
+        <label><span>Aplicar desconto em</span>
+          <select id="descontoTipo">
+            <option value="mensalidade">Mensalidade</option>
+            <option value="implementacao">Implementação</option>
+          </select>
+        </label>
+        <section class="form-grid two aligned">
+          <label><span>Descrição do desconto</span><input id="descontoDescricao" placeholder="Ex.: Desconto" /></label>
+          <label><span>Valor do desconto</span><input id="descontoValor" type="number" step="0.01" placeholder="Ex.: 100" /></label>
+        </section>
+        <button id="addDiscount" class="btn dark full">Adicionar desconto</button>
+      </section>
+
+      <section class="form-grid two">
+        <label><span>Tempo proposta</span><input id="validade" value="10 dias" /></label>
+        <label><span>Vencimento</span><input id="vencimento" value="Todo dia 10" /></label>
+      </section>
+
+      <section class="actions">
+        <button id="saveBudget" class="btn save full">Salvar orçamento</button>
+        <button id="loadSaved" class="btn outline full">Buscar salvos</button>
+        <div id="savedList" class="saved-list hidden"></div>
+        <div class="button-row two">
+          <button id="generatePdfs" class="btn primary">Gerar orçamento + contrato</button>
+          <button id="removeLast" class="btn dark">Remover último item</button>
+        </div>
+        <button id="sendWhats" class="btn whatsapp full">Enviar orçamento por WhatsApp</button>
+      </section>
     </aside>
 
-    <section class="print-area" id="printArea">
-      <header class="doc-header">
-        <div>
-          <div class="brand-title"><span>WEB</span> AUTOMAÇÃO SANTOS</div>
-          <div class="brand-sub">PDV Legal • Automação Comercial • Suporte Técnico</div>
-          <div class="brand-data">Razão Social: ALEXANDER EMIDIO BICHIAROV 30642954895 • CNPJ: 23.349.902/0001-33</div>
-        </div>
-        <div class="doc-number">
-          <small>Contrato</small>
-          <strong id="docNumero">WEB-2026-PENDENTE</strong>
-          <small id="docData">Data: --/--/----</small>
-        </div>
-      </header>
+    <section class="document-wrap">
+      <article id="orcamentoDoc" class="doc-page orcamento-doc">
+        <header class="doc-header">
+          <div>
+            <div class="brand"><span>WEB</span> AUTOMAÇÃO SANTOS</div>
+            <p>PDV Legal • Automação Comercial • Suporte Técnico</p>
+            <small>Razão Social: ALEXANDER EMIDIO BICHIAROV 30642954895 • CNPJ: 23.349.902/0001-33</small>
+          </div>
+          <div class="doc-number">
+            <small>Orçamento</small>
+            <strong id="numeroPreview">WEB-2026-0000</strong>
+            <small>Data: <span id="dataPreview"></span></small>
+          </div>
+        </header>
 
-      <div class="doc-title">
-        <h2>Contrato de Prestação de Serviços</h2>
-        <p>Licenciamento, implantação, configuração e suporte ao sistema PDV Legal</p>
-      </div>
+        <section class="doc-title">
+          <h2>Orçamento Comercial</h2>
+          <p>Licenciamento, implantação, configuração e suporte ao sistema PDV Legal</p>
+        </section>
 
-      <section class="doc-section avoid-break">
-        <h3>1. Contratada</h3>
-        <div class="grid2">
-          <p><b>Nome comercial:</b> Web Automação Santos</p>
-          <p><b>Razão social:</b> ALEXANDER EMIDIO BICHIAROV 30642954895</p>
-          <p><b>CNPJ:</b> 23.349.902/0001-33</p>
-        </div>
-      </section>
+        <section class="box">
+          <h3>1. Contratante</h3>
+          <div class="info-grid">
+            <p><b>Cliente/Loja:</b> <span id="pvCliente">________________________________</span></p>
+            <p><b id="pvDocLabel">CPF/CNPJ:</b> <span id="pvDocumento">________________</span></p>
+            <p><b>Responsável:</b> <span id="pvResponsavel">________________</span></p>
+            <p><b>Telefone:</b> <span id="pvTelefone">________________</span></p>
+            <p><b>E-mail:</b> <span id="pvEmail">________________</span></p>
+            <p><b>Endereço:</b> <span id="pvEndereco">________________</span></p>
+          </div>
+        </section>
 
-      <section class="doc-section avoid-break">
-        <h3>2. Contratante</h3>
-        <div class="grid2">
-          <p><b>Cliente/Loja:</b> <span id="outClienteNome">________________________________</span></p>
-          <p><b><span id="outDocLabel">CPF/CNPJ</span>:</b> <span id="outDocumento">________________</span></p>
-          <p><b>Responsável:</b> <span id="outResponsavel">________________</span></p>
-          <p><b>Telefone:</b> <span id="outTelefone">________________</span></p>
-          <p><b>E-mail:</b> <span id="outEmail">________________</span></p>
-          <p><b>Endereço:</b> <span id="outEndereco">________________</span></p>
-        </div>
-      </section>
-
-      <section class="avoid-break services-block">
-        <h3>3. Serviços contratados</h3>
-        <div class="table-wrap">
-          <table class="doc-table">
-            <thead><tr><th>Descrição</th><th class="center">Qtde</th><th class="right">Valor unit.</th><th class="right">Total</th></tr></thead>
-            <tbody id="itensTabela"></tbody>
+        <section class="items-section">
+          <h3>2. Serviços contratados</h3>
+          <table>
+            <thead><tr><th>Descrição</th><th>Qtd</th><th>Valor unit.</th><th>Total</th></tr></thead>
+            <tbody id="itemsTable"></tbody>
           </table>
-        </div>
-      </section>
+        </section>
 
-      <section class="summary avoid-break">
-        <div class="doc-section implementation-card">
-          <h3>4. Implementação</h3>
-          <p class="line"><span>Taxa de implementação:</span><b id="outImplementacao">R$ 450,00</b></p>
-          <div id="descontosImplementacaoLista"></div>
-          <p class="line total-line"><span>Total implementação:</span><b id="outImplementacaoFinal">R$ 450,00</b></p>
-        </div>
-        <div class="total-card">
-          <h3>5. Mensalidade</h3>
-          <div class="value" id="outMensalidade">R$ 149,90</div>
-          <div id="descontosMensalidadeLista"></div>
-          <p class="subtotal-note" id="outSubtotalMensalidade"></p>
-          <p id="outVencimento">Vencimento: Todo dia 10</p>
-          <p id="outValidade">Validade da proposta: 10 dias</p>
-        </div>
-      </section>
+        <section class="totals-grid">
+          <div class="box total-box light">
+            <h3>3. Implementação</h3>
+            <p><span>Taxa de implementação:</span><b id="pvImplementacao">R$ 450,00</b></p>
+            <div id="descontosImpl"></div>
+            <p class="line"><span>Total implementação:</span><b id="pvTotalImpl">R$ 450,00</b></p>
+          </div>
+          <div class="box total-box dark-box">
+            <h3>4. Mensalidade</h3>
+            <div class="monthly" id="pvMensalidade">R$ 159,90</div>
+            <div id="descontosMensal"></div>
+            <p>Vencimento: <span id="pvVencimento">Todo dia 10</span></p>
+            <p>Validade: <span id="pvValidade">10 dias</span></p>
+          </div>
+        </section>
 
-      <section class="doc-section avoid-break clauses">
-        <h3>6. Cláusulas resumidas</h3>
-        <p><b>6.1.</b> A Web Automação Santos prestará serviços de implantação, configuração, orientação de uso e suporte técnico relacionados ao PDV Legal, conforme os módulos e quantidades descritos neste contrato.</p>
-        <p><b>6.2.</b> A mensalidade contempla o direito de uso dos serviços contratados e suporte conforme canais oficiais de atendimento.</p>
-        <p><b>6.3.</b> O contratante é responsável por manter internet, equipamentos, periféricos, energia elétrica, certificado digital, dados fiscais e demais recursos necessários para funcionamento do sistema.</p>
-        <p><b>6.4.</b> Serviços não previstos, visitas emergenciais, reinstalações, treinamentos extras, redes, computadores, impressoras ou equipamentos poderão ser orçados separadamente.</p>
-      </section>
+        <section class="box compact">
+          <h3>5. Condições comerciais</h3>
+          <p>A Web Automação Santos prestará serviços de implantação, configuração, orientação de uso e suporte técnico relacionados ao PDV Legal, conforme os módulos e quantidades descritos neste orçamento.</p>
+          <p>Serviços não previstos, visitas emergenciais, redes, computadores, impressoras, certificados digitais ou equipamentos poderão ser orçados separadamente.</p>
+        </section>
 
+        <section class="signatures">
+          <div><div class="sig-space"></div><b id="sigCliente">Contratante</b><small id="sigDoc">CPF/CNPJ: ________________</small></div>
+          <div><div class="sig-space brand-watermark">WEB AUTOMAÇÃO</div><b>Web Automação Santos</b><small>CNPJ: 23.349.902/0001-33</small></div>
+        </section>
+      </article>
 
-      <section class="signature avoid-break">
-        <div class="signature-box">
-          <div class="signature-space">Assinatura do contratante</div>
-          <div class="signature-line" id="assinaturaCliente">Contratante</div>
-          <div class="tiny"><span id="assinaturaDocLabel">CPF/CNPJ</span>: <span id="assinaturaDoc">________________</span></div>
-        </div>
-        <div class="signature-box">
-          <div class="signature-space web-sign">WEB AUTOMAÇÃO</div>
-          <div class="signature-line">Web Automação Santos</div>
-          <div class="tiny">ALEXANDER EMIDIO BICHIAROV 30642954895<br>CNPJ: 23.349.902/0001-33<br>Contratada</div>
-        </div>
-      </section>
+      <article id="contratoDoc" class="contract-pages hidden-print-source">
+        <section class="contract-page">
+          <h1>CONTRATO DE PRESTAÇÃO DE SERVIÇOS</h1>
+          <h2>CONTRATO DE PRESTAÇÃO DE SERVIÇOS DE FORNECIMENTO DE SOFTWARE</h2>
+          <h3>I – PARTES</h3>
+          <p><b>CONTRATANTE:</b> <span data-campo="clienteNome"></span>, com sede em <span data-campo="endereco"></span>, inscrita no CPF/CNPJ sob o nº <span data-campo="documento"></span>, e-mail <span data-campo="email"></span>, neste ato representada por <span data-campo="responsavel"></span>.</p>
+          <p><b>CONTRATADA:</b> WEB AUTOMAÇÃO SANTOS, razão social ALEXANDER EMIDIO BICHIAROV 30642954895, inscrita no CNPJ sob o nº 23.349.902/0001-33.</p>
+          <h3>II – CLÁUSULAS CONTRATUAIS</h3>
+          <h3>CLÁUSULA PRIMEIRA – DO OBJETO</h3>
+          <p>1.1. O presente contrato tem por objeto a execução, pela CONTRATADA, de serviços de fornecimento do software PDV Legal, na forma a ser definida por esta.</p>
+          <p>1.2. A adesão do software PDV Legal é online. A CONTRATADA não se responsabiliza pelo não funcionamento do software em equipamentos que não estejam homologados. Para utilizar NFC-e faz-se necessário o certificado digital tipo A1.</p>
+          <p>1.3. A CONTRATANTE tem ciência de que o valor do serviço é definido de acordo com o plano escolhido. A solução básica trata o gerenciamento inicial e os módulos adicionais poderão ser contratados conforme orçamento.</p>
+          <p>1.4. Caso seja necessário upgrade de plano, a liberação dos produtos será feita em até 24h após liquidação do pagamento. Downgrade somente produzirá alteração na fatura seguinte.</p>
+          <p>1.5. A contratação é válida por competência, a partir da ativação da licença e pagamento antecipado. Os serviços estarão disponíveis no período contratado.</p>
+        </section>
+        <section class="contract-page">
+          <h3>CLÁUSULA SEGUNDA – DO PREÇO</h3>
+          <p>2.1. Pelos serviços descritos, a CONTRATANTE pagará à CONTRATADA o valor mensal de <b><span data-campo="mensalidade"></span></b>, conforme módulos contratados.</p>
+          <p>2.2. O pagamento será mensal e antecipado, podendo ser realizado via PIX, cartão, boleto ou outro meio indicado pela CONTRATADA.</p>
+          <p>2.3. A taxa de implementação contratada é de <b><span data-campo="implementacao"></span></b>.</p>
+          <p>2.4. A inadimplência superior a 10 dias poderá implicar no bloqueio da solução até regularização financeira.</p>
+          <p>2.5. Os valores poderão ser reajustados anualmente pelo IGP-M/FGV ou outro índice legal aplicável.</p>
+          <h3>CLÁUSULA TERCEIRA – DO PRAZO CONTRATUAL</h3>
+          <p>3.1. O presente instrumento vigorará por prazo indeterminado, podendo ser alterado pelas PARTES mediante aditivo contratual.</p>
+          <h3>CLÁUSULA QUARTA – DAS RESPONSABILIDADES DA CONTRATADA</h3>
+          <p>4.1. São responsabilidades da CONTRATADA empregar métodos adequados, cumprir normas legais e prestar suporte técnico nos canais oficiais.</p>
+          <p>4.2. Além da cessão de uso do PDV Legal, a CONTRATADA oferece suporte técnico remoto em horário comercial, salvo condições específicas pactuadas.</p>
+        </section>
+        <section class="contract-page">
+          <h3>CLÁUSULA QUINTA – DAS RESPONSABILIDADES DO CONTRATANTE</h3>
+          <p>5.1. A CONTRATANTE deve fornecer todas as informações necessárias para a consecução do objeto deste contrato.</p>
+          <p>5.2. A CONTRATANTE deve pagar o preço na forma e no prazo estipulado.</p>
+          <p>5.3. A CONTRATANTE é responsável por manter internet, equipamentos, periféricos, energia elétrica, certificado digital, dados fiscais e demais recursos necessários.</p>
+          <h3>CLÁUSULA SEXTA – DA RESCISÃO CONTRATUAL</h3>
+          <p>6.1. O contrato poderá ser denunciado por qualquer das partes mediante comunicação escrita com antecedência mínima de 30 dias.</p>
+          <p>6.2. Em caso de cancelamento, a ferramenta continuará disponível até a data final do período vigente já quitado.</p>
+          <h3>CLÁUSULA SÉTIMA – MULTA</h3>
+          <p>7.1. A infração a qualquer cláusula sujeitará a parte infratora ao pagamento de multa no valor de uma mensalidade, além de perdas e danos.</p>
+          <h3>CLÁUSULA OITAVA – CONFIDENCIALIDADE</h3>
+          <p>8.1. É vedado às PARTES divulgar a terceiros os termos deste contrato ou qualquer informação decorrente de seu objeto sem autorização prévia por escrito.</p>
+        </section>
+        <section class="contract-page">
+          <h3>CLÁUSULA NONA – LGPD</h3>
+          <p>9.1. Para fins deste contrato, aplicam-se as definições da Lei Geral de Proteção de Dados Pessoais, Lei nº 13.709/2018, incluindo Controlador, Operador, Titular, Dados Pessoais, Tratamento e Incidente.</p>
+          <p>9.2. Este contrato constitui o meio apropriado para regular o tratamento de dados pessoais no contexto da prestação dos serviços.</p>
+          <p>9.3. A CONTRATADA poderá coletar, utilizar e compartilhar dados pessoais para cumprimento do contrato e propósitos legítimos relacionados à prestação, manutenção e melhoria dos serviços.</p>
+          <p>9.4. Cada parte será individualmente responsável pelo cumprimento de suas obrigações decorrentes da LGPD e regulamentações da ANPD.</p>
+          <p>9.5. A CONTRATANTE garante que os dados compartilhados foram coletados e tratados conforme a legislação aplicável.</p>
+        </section>
+        <section class="contract-page">
+          <h3>CLÁUSULA DÉCIMA – DISPOSIÇÕES GERAIS</h3>
+          <p>10.1. Toda alteração nos serviços deverá ser previamente aprovada mediante termo aditivo.</p>
+          <p>10.2. A CONTRATANTE declara que são corretos os dados cadastrais e informações prestadas.</p>
+          <p>10.3. O presente instrumento constitui o único acordo existente entre as partes com relação ao seu objeto.</p>
+          <p>10.4. Qualquer alteração somente produzirá efeitos se efetuada por escrito e assinada pelas partes.</p>
+          <p>10.5. Todos os avisos e comunicações deverão ser efetuados por meio escrito, físico ou eletrônico.</p>
+          <p>10.6. As partes aceitam que as assinaturas poderão ser realizadas por ferramenta de assinatura eletrônica, nos termos da MP 2.200-2.</p>
+          <p>10.7. Fica eleito o foro da comarca competente para dirimir controvérsias oriundas deste instrumento.</p>
+          <p class="contract-date">Santos/SP, <span data-campo="data"></span>.</p>
+          <div class="contract-signatures"><div>CONTRATANTE<br><span data-campo="clienteNome"></span></div><div>CONTRATADA<br>WEB AUTOMAÇÃO SANTOS</div></div>
+          <div class="contract-signatures"><div>TESTEMUNHA 1<br>Nome:<br>CPF:</div><div>TESTEMUNHA 2<br>Nome:<br>CPF:</div></div>
+        </section>
+      </article>
     </section>
   </main>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
-  <script src="assets/js/main.js"></script>
+  <script type="module" src="assets/js/main.js"></script>
 </body>
 </html>

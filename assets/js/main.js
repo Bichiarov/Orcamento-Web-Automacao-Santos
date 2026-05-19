@@ -1,4 +1,6 @@
-// Firebase — Web Automação Santos / PDV Legal
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getFirestore, collection, doc, getDoc, setDoc, addDoc, getDocs, query, orderBy, limit, serverTimestamp, runTransaction } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
 const firebaseConfig = {
   apiKey: "AIzaSyDv5O_X7F_NDYEoZYkfzgg5j-WLkNK-QLk",
   authDomain: "web-automacao-santos-pdvlegal.firebaseapp.com",
@@ -7,18 +9,10 @@ const firebaseConfig = {
   messagingSenderId: "228810100304",
   appId: "1:228810100304:web:eca86e1f9b889484a20b55"
 };
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
-let db = null;
-try {
-  if (window.firebase) {
-    firebase.initializeApp(firebaseConfig);
-    db = firebase.firestore();
-  }
-} catch (erro) {
-  console.warn('Firebase não inicializado:', erro);
-}
-
-const produtos = [
+const produtosPadrao = [
   { nome: "PDV Legal — Plano Base com Retaguarda", valor: 159.9 },
   { nome: "PDV adicional", valor: 49.9 },
   { nome: "Estoque", valor: 20 },
@@ -36,481 +30,132 @@ const produtos = [
   { nome: "KDS TokMenu", valor: 39.9 }
 ];
 
-let itens = [{ descricao: "PDV Legal — Plano Base com Retaguarda", quantidade: 1, valor: 159.9 }];
-let descontos = [];
-let orcamentoAtualId = null;
-let numeroConfirmadoNoBanco = false;
-let precosProdutos = {};
+const state = {
+  numero: `WEB-${new Date().getFullYear()}-0000`,
+  itens: [{ descricao: "PDV Legal — Plano Base com Retaguarda", quantidade: 1, valor: 159.9 }],
+  descontos: [],
+  precos: Object.fromEntries(produtosPadrao.map(p => [p.nome, p.valor]))
+};
 
-function formatarNumeroContrato(seq, ano = new Date().getFullYear()){
-  return `WEB-${ano}-${String(seq).padStart(4,'0')}`;
+const $ = id => document.getElementById(id);
+const money = v => Number(v || 0).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+function hojeISO(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function dataBR(v){ if(!v) return ''; const [a,m,d]=v.split('-'); return `${d}/${m}/${a}`; }
+function onlyNums(v){ return String(v||'').replace(/[^0-9]/g,''); }
+function docLabel(v){ return onlyNums(v).length > 11 ? 'CNPJ' : 'CPF/CNPJ'; }
+function fmtDoc(v){ const d=onlyNums(v).slice(0,14); if(d.length<=11) return d.replace(/([0-9]{3})([0-9])/,'$1.$2').replace(/([0-9]{3})([0-9])/,'$1.$2').replace(/([0-9]{3})([0-9]{1,2})$/,'$1-$2'); return d.replace(/([0-9]{2})([0-9])/,'$1.$2').replace(/([0-9]{3})([0-9])/,'$1.$2').replace(/([0-9]{3})([0-9])/,'$1/$2').replace(/([0-9]{4})([0-9]{1,2})$/,'$1-$2'); }
+function safeFile(v){ return String(v||'cliente').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/gi,'_').toLowerCase(); }
+
+function init(){
+  $('data').value = hojeISO();
+  produtosPadrao.forEach(p => $('produtoSelecionado').append(new Option(`${p.nome} — ${money(p.valor)}`, p.nome)));
+  renderPriceList(); bindEvents(); updatePreview();
 }
 
-function numeroPendente(){
-  return `WEB-${new Date().getFullYear()}-PENDENTE`;
+function bindEvents(){
+  ['clienteNome','data','documento','telefone','responsavel','email','endereco','implementacao','validade','vencimento'].forEach(id=>$(id).addEventListener('input', updatePreview));
+  $('documento').addEventListener('input', e => { e.target.value = fmtDoc(e.target.value); $('docLabel').textContent = docLabel(e.target.value); updatePreview(); });
+  $('addItem').onclick = addItem;
+  $('clearBudget').onclick = () => { state.itens = []; state.descontos = []; updatePreview(); };
+  $('removeLast').onclick = () => { state.itens.pop(); updatePreview(); };
+  $('togglePrices').onclick = () => $('pricePanel').classList.toggle('hidden');
+  $('resetPrices').onclick = () => { state.precos = Object.fromEntries(produtosPadrao.map(p => [p.nome, p.valor])); renderPriceList(); };
+  $('addDiscount').onclick = addDiscount;
+  $('generatePdfs').onclick = gerarOrcamentoContrato;
+  $('sendWhats').onclick = enviarWhatsApp;
+  $('saveBudget').onclick = salvarOrcamento;
+  $('loadSaved').onclick = buscarSalvos;
 }
 
-let numeroContrato = numeroPendente();
-
-async function reservarNumeroOrcamento(){
-  if(numeroConfirmadoNoBanco && numeroContrato && !numeroContrato.includes('PENDENTE')){
-    return numeroContrato;
-  }
-  if(!db){
-    throw new Error('Firebase não carregou. Não é possível gerar numeração única.');
-  }
-
-  const ano = new Date().getFullYear();
-  const controleRef = db.collection('controle').doc(`numeracao_${ano}`);
-  let novoNumero = null;
-
-  await db.runTransaction(async (transaction) => {
-    const snap = await transaction.get(controleRef);
-    const ultimo = snap.exists ? Number(snap.data().ultimoNumero || 0) : 0;
-    const proximo = ultimo + 1;
-    novoNumero = formatarNumeroContrato(proximo, ano);
-    transaction.set(controleRef, {
-      ultimoNumero: proximo,
-      ano,
-      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
+function renderPriceList(){
+  const list = $('priceList'); list.innerHTML = '';
+  produtosPadrao.forEach(p=>{
+    const row = document.createElement('div'); row.className='price-item';
+    row.innerHTML = `<span>${p.nome}</span><input type="number" step="0.01" value="${state.precos[p.nome] ?? p.valor}">`;
+    row.querySelector('input').addEventListener('input', e => { state.precos[p.nome] = Number(e.target.value||0); });
+    list.append(row);
   });
-
-  numeroContrato = novoNumero;
-  numeroConfirmadoNoBanco = true;
-  atualizar();
-  return numeroContrato;
 }
 
-function iniciarNovoOrcamento(){
-  orcamentoAtualId = null;
-  numeroConfirmadoNoBanco = false;
-  numeroContrato = numeroPendente();
+function addItem(){
+  const nome = $('produtoSelecionado').value;
+  const qtd = Math.max(1, Number($('quantidade').value || 1));
+  state.itens.push({ descricao:nome, quantidade:qtd, valor:Number(state.precos[nome] || 0) }); updatePreview();
+}
+function addDiscount(){
+  const valor = Number($('descontoValor').value || 0); if(valor <= 0) return;
+  state.descontos.push({ tipo:$('descontoTipo').value, descricao:$('descontoDescricao').value || 'Desconto comercial', valor });
+  $('descontoDescricao').value=''; $('descontoValor').value=''; updatePreview();
 }
 
-const $ = (id) => document.getElementById(id);
-function moeda(valor){ return Number(valor || 0).toLocaleString('pt-BR', {style:'currency', currency:'BRL'}); }
-function hojeISO(){ const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
-function dataBR(v){ if(!v) return ''; const [a,m,d] = v.split('-'); return `${d}/${m}/${a}`; }
-function apenasNumeros(v){ return String(v || '').replace(/[^0-9]/g, ''); }
-function tipoDocumento(v){ return apenasNumeros(v).length > 11 ? 'CNPJ' : 'CPF/CNPJ'; }
-function formatarDocumento(v){
-  const d = apenasNumeros(v).slice(0,14);
-  if(d.length <= 11){
-    return d.replace(/([0-9]{3})([0-9])/, '$1.$2').replace(/([0-9]{3})([0-9])/, '$1.$2').replace(/([0-9]{3})([0-9]{1,2})$/, '$1-$2');
-  }
-  return d.replace(/([0-9]{2})([0-9])/, '$1.$2').replace(/([0-9]{3})([0-9])/, '$1.$2').replace(/([0-9]{3})([0-9])/, '$1/$2').replace(/([0-9]{4})([0-9]{1,2})$/, '$1-$2');
-}
-function getValue(id){ return $(id)?.value || ''; }
-function setText(id, text){ const el = $(id); if(el) el.textContent = text; }
-function totais(){
-  const subtotal = itens.reduce((acc, item) => acc + item.quantidade * item.valor, 0);
-  const totalDescontosMensalidade = descontos
-    .filter(item => item.tipo === 'mensalidade')
-    .reduce((acc, item) => acc + Number(item.valor || 0), 0);
-  const totalDescontosImplementacao = descontos
-    .filter(item => item.tipo === 'implementacao')
-    .reduce((acc, item) => acc + Number(item.valor || 0), 0);
-  const implementacaoBruta = Number(getValue('implementacao') || 0);
+function getData(){
+  const subtotal = state.itens.reduce((a,i)=>a + i.quantidade*i.valor,0);
+  const descMensal = state.descontos.filter(d=>d.tipo==='mensalidade').reduce((a,d)=>a+d.valor,0);
+  const descImpl = state.descontos.filter(d=>d.tipo==='implementacao').reduce((a,d)=>a+d.valor,0);
+  const impl = Number($('implementacao').value || 0);
   return {
-    subtotal,
-    totalDescontosMensalidade,
-    totalDescontosImplementacao,
-    mensalidade: Math.max(0, subtotal - totalDescontosMensalidade),
-    implementacaoLiquida: Math.max(0, implementacaoBruta - totalDescontosImplementacao)
-  };
-}
-function atualizar(){
-  const documento = getValue('clienteDocumento');
-  const docTipo = tipoDocumento(documento);
-  const total = totais();
-  setText('docNumero', numeroContrato);
-  setText('docData', `Data: ${dataBR(getValue('dataContrato'))}`);
-  setText('docLabel', docTipo);
-  setText('outDocLabel', docTipo);
-  setText('assinaturaDocLabel', docTipo);
-  setText('outClienteNome', getValue('clienteNome') || '________________________________');
-  setText('outDocumento', documento || '________________');
-  setText('outResponsavel', getValue('clienteResponsavel') || '________________');
-  setText('outTelefone', getValue('clienteTelefone') || '________________');
-  setText('outEmail', getValue('clienteEmail') || '________________');
-  setText('outEndereco', getValue('clienteEndereco') || '________________');
-  setText('outImplementacao', moeda(getValue('implementacao')));
-  setText('outImplementacaoFinal', moeda(total.implementacaoLiquida));
-  setText('outMensalidade', moeda(total.mensalidade));
-  setText('outSubtotalMensalidade', total.totalDescontosMensalidade > 0 ? `Subtotal: ${moeda(total.subtotal)}` : '');
-  setText('outVencimento', `Vencimento: ${getValue('vencimento') || 'Todo dia 10'}`);
-  setText('outValidade', `Validade da proposta: ${getValue('validade') || '10 dias'}`);
-  setText('outValidadeTexto', getValue('validade') || '10 dias');
-  setText('assinaturaCliente', getValue('clienteResponsavel') || 'Contratante');
-  setText('assinaturaDoc', documento || '________________');
-
-  const tbody = $('itensTabela');
-  tbody.innerHTML = itens.map(item => `<tr><td>${item.descricao}</td><td class="center">${item.quantidade}</td><td class="right">${moeda(item.valor)}</td><td class="right"><b>${moeda(item.quantidade * item.valor)}</b></td></tr>`).join('');
-  const descontosImplementacaoEl = $('descontosImplementacaoLista');
-  if (descontosImplementacaoEl) {
-    descontosImplementacaoEl.innerHTML = descontos
-      .filter(item => item.tipo === 'implementacao')
-      .map(item => `<p class="line green"><span>${item.descricao}:</span><b>- ${moeda(item.valor)}</b></p>`)
-      .join('');
-  }
-  const descontosMensalidadeEl = $('descontosMensalidadeLista');
-  if (descontosMensalidadeEl) {
-    descontosMensalidadeEl.innerHTML = descontos
-      .filter(item => item.tipo === 'mensalidade')
-      .map(item => `<p class="line green-light"><span>${item.descricao}:</span><b>- ${moeda(item.valor)}</b></p>`)
-      .join('');
-  }
-}
-function preencherProdutos(){
-  precosProdutos = Object.fromEntries(produtos.map(p => [p.nome, p.valor]));
-  const select = $('produtoSelecionado');
-  select.innerHTML = produtos.map(p => `<option value="${p.nome}">${p.nome}</option>`).join('');
-  select.title = select.value;
-  select.addEventListener('change', () => { select.title = select.value; });
-  renderizarAjustesPreco();
-}
-
-function renderizarAjustesPreco(){
-  const lista = $('listaPrecos');
-  if(!lista) return;
-  lista.innerHTML = produtos.map(p => `
-    <div class="price-item">
-      <span>${p.nome}</span>
-      <input type="number" step="0.01" data-produto="${p.nome}" value="${Number(precosProdutos[p.nome] ?? p.valor).toFixed(2)}">
-    </div>
-  `).join('');
-  lista.querySelectorAll('input[data-produto]').forEach(input => {
-    input.addEventListener('input', () => {
-      precosProdutos[input.dataset.produto] = Number(input.value || 0);
-    });
-  });
-}
-
-function restaurarPrecosPadrao(){
-  precosProdutos = Object.fromEntries(produtos.map(p => [p.nome, p.valor]));
-  renderizarAjustesPreco();
-}
-function adicionarItem(){
-  const nome = getValue('produtoSelecionado');
-  const produto = produtos.find(p => p.nome === nome);
-  const quantidade = Math.max(1, Number(getValue('quantidade') || 1));
-  const valorAjustado = Number(precosProdutos[produto.nome] ?? produto.valor);
-  itens.push({ descricao: produto.nome, quantidade, valor: valorAjustado });
-  atualizar();
-}
-function adicionarDesconto(){
-  const valor = Number(getValue('descontoValor') || 0);
-  if(valor <= 0) return;
-  descontos.push({
-    descricao: getValue('descontoDescricao') || 'Desconto comercial',
-    valor,
-    tipo: getValue('descontoTipo') || 'mensalidade'
-  });
-  $('descontoDescricao').value = '';
-  $('descontoValor').value = '';
-  $('descontoTipo').value = 'mensalidade';
-  atualizar();
-}
-function limparContrato(){
-  itens = [{ descricao: "PDV Legal — Plano Base com Retaguarda", quantidade: 1, valor: Number(precosProdutos["PDV Legal — Plano Base com Retaguarda"] ?? 159.9) }];
-  descontos = [];
-  iniciarNovoOrcamento();
-  atualizar();
-}
-function removerUltimoItem(){
-  if(itens.length > 1) itens.pop();
-  atualizar();
-}
-async function gerarPdfArquivo(){
-  if(!window.html2canvas || !window.jspdf){
-    alert('Bibliotecas de PDF não carregaram. Verifique sua conexão com a internet ou use a impressão do navegador.');
-    return null;
-  }
-  atualizar();
-  const elemento = $('printArea');
-
-  // Clona a via de impressão em tamanho A4 fixo. Isso evita que o PDF mobile
-  // seja gerado no formato estreito da tela do celular.
-  const clone = elemento.cloneNode(true);
-  clone.id = 'printAreaExport';
-  clone.classList.add('pdf-export');
-  document.body.appendChild(clone);
-
-  try {
-    const canvas = await html2canvas(clone, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: '#ffffff',
-      width: 794,
-      height: 1123,
-      windowWidth: 794,
-      windowHeight: 1123,
-      scrollX: 0,
-      scrollY: 0
-    });
-
-    const imgData = canvas.toDataURL('image/jpeg', 0.98);
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF('p', 'mm', 'a4');
-
-    // Preenche exatamente uma página A4.
-    pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
-
-    const cliente = (getValue('clienteNome') || 'cliente').replace(/[^a-z0-9]/gi, '_').toLowerCase();
-    return new File([pdf.output('blob')], `orcamento_pdv_legal_${cliente}_${numeroContrato}.pdf`, { type: 'application/pdf' });
-  } finally {
-    clone.remove();
-  }
-}
-async function baixarPdf(){
-  try {
-    await reservarNumeroOrcamento();
-  } catch(erro) {
-    console.error('Erro ao reservar número:', erro);
-    alert('Não foi possível gerar uma numeração única. Verifique o Firebase/Firestore.');
-    return;
-  }
-  const arquivo = await gerarPdfArquivo();
-  if(!arquivo) return;
-  const url = URL.createObjectURL(arquivo);
-  const a = document.createElement('a');
-  a.href = url; a.download = arquivo.name; document.body.appendChild(a); a.click(); a.remove();
-  URL.revokeObjectURL(url);
-}
-async function enviarWhatsApp(){
-  try {
-    await reservarNumeroOrcamento();
-  } catch(erro) {
-    console.error('Erro ao reservar número:', erro);
-    alert('Não foi possível gerar uma numeração única. Verifique o Firebase/Firestore.');
-    return;
-  }
-  const total = totais();
-  const texto = [
-    'Olá! Tudo bem? Somos da Web Automação Santos. Segue o orçamento comercial do PDV Legal preparado para sua empresa.',
-    '',
-    `Cliente: ${getValue('clienteNome') || 'Não informado'}`,
-    `${tipoDocumento(getValue('clienteDocumento'))}: ${getValue('clienteDocumento') || 'Não informado'}`,
-    `Contrato: ${numeroContrato}`,
-    `Data: ${dataBR(getValue('dataContrato'))}`,
-    `Validade: ${getValue('validade') || '10 dias'}`,
-    `Mensalidade: ${moeda(total.mensalidade)}`,
-    `Taxa de implementação: ${moeda(total.implementacaoLiquida)}`
-  ].join('\n');
-
-  const arquivo = await gerarPdfArquivo();
-  if(!arquivo) return;
-
-  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
-  const podeCompartilharArquivo = navigator.canShare && navigator.canShare({ files: [arquivo] });
-
-  if(isMobile && podeCompartilharArquivo){
-    try{
-      await navigator.share({
-        title: 'Orçamento PDV Legal — Web Automação Santos',
-        text: texto,
-        files: [arquivo]
-      });
-      return;
-    }catch(e){
-      console.warn('Compartilhamento nativo cancelado ou indisponível. Usando fallback.', e);
-    }
-  }
-
-  const url = URL.createObjectURL(arquivo);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = arquivo.name;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-
-  window.open(`https://wa.me/?text=${encodeURIComponent(texto + '\n\nO orçamento oficial em PDF A4 foi baixado no dispositivo. Anexe esse arquivo nesta conversa do WhatsApp.')}`, '_blank', 'noopener,noreferrer');
-}
-
-function dadosAtuaisDoOrcamento(){
-  const total = totais();
-  return {
-    numero: numeroContrato,
-    data: getValue('dataContrato'),
-    validade: getValue('validade') || '10 dias',
-    vencimento: getValue('vencimento') || 'Todo dia 10',
-    status: 'Aberto',
-    cliente: {
-      nome: getValue('clienteNome'),
-      documento: getValue('clienteDocumento'),
-      tipoDocumento: tipoDocumento(getValue('clienteDocumento')),
-      responsavel: getValue('clienteResponsavel'),
-      telefone: getValue('clienteTelefone'),
-      email: getValue('clienteEmail'),
-      endereco: getValue('clienteEndereco')
-    },
-    itens: itens.map(item => ({
-      descricao: item.descricao,
-      quantidade: Number(item.quantidade || 0),
-      valorUnitario: Number(item.valor || 0),
-      valorTotal: Number(item.quantidade || 0) * Number(item.valor || 0)
-    })),
-    descontos: descontos.map(item => ({
-      descricao: item.descricao,
-      valor: Number(item.valor || 0),
-      tipo: item.tipo || 'mensalidade'
-    })),
-    totais: {
-      subtotalMensalidade: total.subtotal,
-      descontoMensalidade: total.totalDescontosMensalidade,
-      taxaImplementacao: Number(getValue('implementacao') || 0),
-      descontoImplementacao: total.totalDescontosImplementacao,
-      totalMensalidade: total.mensalidade,
-      totalImplementacao: total.implementacaoLiquida
-    },
-    atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    numero: state.numero, data:$('data').value, validade:$('validade').value, vencimento:$('vencimento').value,
+    cliente:{ nome:$('clienteNome').value, documento:$('documento').value, responsavel:$('responsavel').value, telefone:$('telefone').value, email:$('email').value, endereco:$('endereco').value },
+    itens: state.itens, descontos: state.descontos,
+    totais:{ subtotal, descMensal, descImpl, mensalidade:Math.max(0,subtotal-descMensal), implementacao:impl, implementacaoLiquida:Math.max(0,impl-descImpl) }
   };
 }
 
-async function salvarOrcamento(){
-  if(!db){
-    alert('Firebase não carregou. Verifique sua conexão e se o Firestore está ativado.');
-    return;
-  }
-  try{
-    await reservarNumeroOrcamento();
-    atualizar();
-    const dados = dadosAtuaisDoOrcamento();
-    const docId = numeroContrato;
-    const ref = db.collection('orcamentos').doc(docId);
-    const existente = await ref.get();
-    if(!existente.exists){
-      dados.criadoEm = firebase.firestore.FieldValue.serverTimestamp();
-    } else {
-      dados.criadoEm = existente.data().criadoEm || firebase.firestore.FieldValue.serverTimestamp();
-    }
-    await ref.set(dados, { merge: true });
-    orcamentoAtualId = docId;
-    alert(`Orçamento ${numeroContrato} salvo com sucesso.`);
-    await listarOrcamentos(false);
-    return docId;
-  }catch(erro){
-    console.error('Erro ao salvar orçamento:', erro);
-    alert('Não foi possível salvar o orçamento no Firebase. Verifique as regras do Firestore e a conexão.');
-  }
+function updatePreview(){
+  const d = getData();
+  $('numeroPreview').textContent = d.numero; $('dataPreview').textContent = dataBR(d.data);
+  $('pvCliente').textContent = d.cliente.nome || '________________________________'; $('pvDocLabel').textContent = docLabel(d.cliente.documento)+':'; $('pvDocumento').textContent = d.cliente.documento || '________________';
+  $('pvResponsavel').textContent = d.cliente.responsavel || '________________'; $('pvTelefone').textContent = d.cliente.telefone || '________________'; $('pvEmail').textContent = d.cliente.email || '________________'; $('pvEndereco').textContent = d.cliente.endereco || '________________';
+  $('sigCliente').textContent = d.cliente.responsavel || 'Contratante'; $('sigDoc').textContent = `${docLabel(d.cliente.documento)}: ${d.cliente.documento || '________________'}`;
+  const tbody=$('itemsTable'); tbody.innerHTML='';
+  if(d.itens.length===0){ tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:#94a3b8">Nenhum item adicionado.</td></tr>'; }
+  d.itens.forEach(i=>{ const tr=document.createElement('tr'); tr.innerHTML=`<td>${i.descricao}</td><td>${i.quantidade}</td><td>${money(i.valor)}</td><td><b>${money(i.quantidade*i.valor)}</b></td>`; tbody.append(tr); });
+  $('pvImplementacao').textContent = money(d.totais.implementacao); $('pvTotalImpl').textContent=money(d.totais.implementacaoLiquida); $('pvMensalidade').textContent=money(d.totais.mensalidade); $('pvVencimento').textContent=d.vencimento; $('pvValidade').textContent=d.validade;
+  renderDiscounts(d); fillContract(d);
+}
+function renderDiscounts(d){
+  $('descontosImpl').innerHTML=''; $('descontosMensal').innerHTML='';
+  d.descontos.filter(x=>x.tipo==='implementacao').forEach(x=> $('descontosImpl').insertAdjacentHTML('beforeend', `<p class="discount-line"><span>${x.descricao}:</span><b>- ${money(x.valor)}</b></p>`));
+  d.descontos.filter(x=>x.tipo==='mensalidade').forEach(x=> $('descontosMensal').insertAdjacentHTML('beforeend', `<p class="discount-line"><span>${x.descricao}:</span><b>- ${money(x.valor)}</b></p>`));
+}
+function fillContract(d){
+  document.querySelectorAll('[data-campo="clienteNome"]').forEach(e=>e.textContent=d.cliente.nome||'CONTRATANTE');
+  document.querySelectorAll('[data-campo="endereco"]').forEach(e=>e.textContent=d.cliente.endereco||'________________');
+  document.querySelectorAll('[data-campo="documento"]').forEach(e=>e.textContent=d.cliente.documento||'________________');
+  document.querySelectorAll('[data-campo="email"]').forEach(e=>e.textContent=d.cliente.email||'________________');
+  document.querySelectorAll('[data-campo="responsavel"]').forEach(e=>e.textContent=d.cliente.responsavel||'________________');
+  document.querySelectorAll('[data-campo="mensalidade"]').forEach(e=>e.textContent=money(d.totais.mensalidade));
+  document.querySelectorAll('[data-campo="implementacao"]').forEach(e=>e.textContent=money(d.totais.implementacaoLiquida));
+  document.querySelectorAll('[data-campo="data"]').forEach(e=>e.textContent=dataBR(d.data));
 }
 
-function mostrarListaOrcamentos(mostrar=true){
-  const box = $('orcamentosSalvos');
-  if(box) box.style.display = mostrar ? 'block' : 'none';
+async function reservarNumero(){
+  if(state.numero && !state.numero.endsWith('0000')) return state.numero;
+  const ano = new Date().getFullYear(); const ref = doc(db,'controle',`numeracao_${ano}`);
+  const novo = await runTransaction(db, async tx => { const snap=await tx.get(ref); const atual=snap.exists()?Number(snap.data().ultimoNumero||0):0; const prox=atual+1; tx.set(ref,{ultimoNumero:prox, atualizadoEm:serverTimestamp()},{merge:true}); return prox; });
+  state.numero = `WEB-${ano}-${String(novo).padStart(4,'0')}`; updatePreview(); return state.numero;
 }
 
-async function listarOrcamentos(mostrar=true){
-  if(!db){
-    alert('Firebase não carregou. Verifique sua conexão e se o Firestore está ativado.');
-    return;
-  }
-  const lista = $('listaOrcamentos');
-  if(!lista) return;
-  mostrarListaOrcamentos(mostrar);
-  lista.innerHTML = '<div class="saved-empty">Carregando orçamentos...</div>';
-  try{
-    let docs = [];
-    try{
-      const snap = await db.collection('orcamentos').orderBy('criadoEm','desc').limit(20).get({ source: 'server' });
-      snap.forEach(doc => docs.push({ id: doc.id, data: doc.data() }));
-    }catch(erroOrdenado){
-      console.warn('Busca ordenada falhou. Tentando busca simples sem orderBy:', erroOrdenado);
-      const snap = await db.collection('orcamentos').limit(20).get({ source: 'server' });
-      snap.forEach(doc => docs.push({ id: doc.id, data: doc.data() }));
-      docs.sort((a,b) => {
-        const na = String(a.data.numero || a.id || '');
-        const nb = String(b.data.numero || b.id || '');
-        return nb.localeCompare(na, 'pt-BR', { numeric: true });
-      });
-    }
-
-    if(!docs.length){
-      lista.innerHTML = '<div class="saved-empty">Nenhum orçamento salvo ainda.</div>';
-      return;
-    }
-
-    lista.innerHTML = '';
-    docs.forEach(({ id, data: d }) => {
-      const el = document.createElement('div');
-      el.className = 'saved-card';
-      el.innerHTML = `
-        <div>
-          <strong>${d.numero || 'Sem número'}</strong>
-          <span>${d.cliente?.nome || 'Cliente não informado'}</span>
-          <small>${d.data ? dataBR(d.data) : ''} • Mensalidade ${moeda(d.totais?.totalMensalidade || 0)}</small>
-        </div>
-        <button type="button" data-id="${id}">Abrir</button>
-      `;
-      el.querySelector('button').addEventListener('click', () => carregarOrcamento(id));
-      lista.appendChild(el);
-    });
-  }catch(erro){
-    console.error('Erro ao listar orçamentos:', erro);
-    lista.innerHTML = `<div class="saved-empty">Erro ao buscar orçamentos: ${erro.message || erro}. Verifique as regras do Firestore e se o app no PC está usando a versão atualizada.</div>`;
-  }
+async function elementToPdfFile(element, filename){
+  const canvas = await html2canvas(element,{scale:2,useCORS:true,backgroundColor:'#ffffff'});
+  const { jsPDF } = window.jspdf; const pdf = new jsPDF('p','mm','a4');
+  const img = canvas.toDataURL('image/jpeg',0.98); const pageW=210,pageH=297,margin=5,usableW=pageW-margin*2,usableH=pageH-margin*2; const ratio=canvas.width/canvas.height; let w=usableW,h=w/ratio; if(h>usableH){h=usableH;w=h*ratio;} pdf.addImage(img,'JPEG',(pageW-w)/2,(pageH-h)/2,w,h); return new File([pdf.output('blob')],filename,{type:'application/pdf'});
 }
-
-async function carregarOrcamento(id){
-  if(!db) return;
-  try{
-    const doc = await db.collection('orcamentos').doc(id).get();
-    if(!doc.exists){ alert('Orçamento não encontrado.'); return; }
-    const d = doc.data();
-    numeroContrato = d.numero || numeroContrato;
-    numeroConfirmadoNoBanco = !!d.numero;
-    orcamentoAtualId = id;
-    $('clienteNome').value = d.cliente?.nome || '';
-    $('clienteDocumento').value = d.cliente?.documento || '';
-    $('clienteResponsavel').value = d.cliente?.responsavel || '';
-    $('clienteTelefone').value = d.cliente?.telefone || '';
-    $('clienteEmail').value = d.cliente?.email || '';
-    $('clienteEndereco').value = d.cliente?.endereco || '';
-    $('dataContrato').value = d.data || hojeISO();
-    $('validade').value = d.validade || '10 dias';
-    $('vencimento').value = d.vencimento || 'Todo dia 10';
-    $('implementacao').value = d.totais?.taxaImplementacao ?? 450;
-    itens = Array.isArray(d.itens) && d.itens.length ? d.itens.map(item => ({
-      descricao: item.descricao,
-      quantidade: Number(item.quantidade || 1),
-      valor: Number(item.valorUnitario || item.valor || 0)
-    })) : [{ descricao: "PDV Legal — Plano Base com Retaguarda", quantidade: 1, valor: 159.9 }];
-    descontos = Array.isArray(d.descontos) ? d.descontos.map(item => ({
-      descricao: item.descricao,
-      valor: Number(item.valor || 0),
-      tipo: item.tipo || 'mensalidade'
-    })) : [];
-    atualizar();
-    mostrarListaOrcamentos(false);
-  }catch(erro){
-    console.error('Erro ao carregar orçamento:', erro);
-    alert('Não foi possível carregar o orçamento.');
-  }
+async function contractToPdfFile(filename){
+  const { jsPDF } = window.jspdf; const pdf = new jsPDF('p','mm','a4'); const pages = document.querySelectorAll('.contract-page');
+  for(let i=0;i<pages.length;i++){ const canvas=await html2canvas(pages[i],{scale:2,useCORS:true,backgroundColor:'#ffffff'}); const img=canvas.toDataURL('image/jpeg',0.98); if(i>0) pdf.addPage(); pdf.addImage(img,'JPEG',0,0,210,297); }
+  return new File([pdf.output('blob')],filename,{type:'application/pdf'});
 }
-
-function iniciar(){
-  preencherProdutos();
-  $('dataContrato').value = hojeISO();
-  $('docNumero').textContent = numeroContrato;
-  ['clienteNome','dataContrato','clienteDocumento','clienteTelefone','clienteResponsavel','clienteEmail','clienteEndereco','validade','vencimento','implementacao'].forEach(id => $(id).addEventListener('input', atualizar));
-  $('descontoTipo').addEventListener('change', atualizar);
-  $('clienteDocumento').addEventListener('input', (e) => { e.target.value = formatarDocumento(e.target.value); atualizar(); });
-  $('btnAdicionarItem').addEventListener('click', adicionarItem);
-  $('btnAjustePrecos').addEventListener('click', () => {
-    const box = $('ajustePrecos');
-    box.style.display = box.style.display === 'none' ? 'block' : 'none';
-  });
-  $('btnRestaurarPrecos').addEventListener('click', restaurarPrecosPadrao);
-  $('btnAdicionarDesconto').addEventListener('click', adicionarDesconto);
-  $('btnLimpar').addEventListener('click', limparContrato);
-  $('btnRemoverUltimo').addEventListener('click', removerUltimoItem);
-  $('btnGerarPdf').addEventListener('click', baixarPdf);
-  $('btnWhatsApp').addEventListener('click', enviarWhatsApp);
-  $('btnSalvarOrcamento').addEventListener('click', salvarOrcamento);
-  $('btnBuscarOrcamentos').addEventListener('click', () => listarOrcamentos(true));
-  atualizar();
+function downloadFile(file){ const url=URL.createObjectURL(file); const a=document.createElement('a'); a.href=url; a.download=file.name; document.body.append(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),800); }
+async function gerarOrcamentoContrato(){ await reservarNumero(); const d=getData(); const base=`${safeFile(d.cliente.nome)}_${d.numero}`; downloadFile(await elementToPdfFile($('orcamentoDoc'),`orcamento_${base}.pdf`)); downloadFile(await contractToPdfFile(`contrato_${base}.pdf`)); }
+async function enviarWhatsApp(){ await reservarNumero(); const d=getData(); downloadFile(await elementToPdfFile($('orcamentoDoc'),`orcamento_${safeFile(d.cliente.nome)}_${d.numero}.pdf`)); const msg = `Olá! Tudo bem? Somos da Web Automação Santos. Segue o orçamento comercial do PDV Legal preparado para sua empresa.\n\nO orçamento em PDF foi baixado no dispositivo. Anexe o arquivo nesta conversa do WhatsApp.`; window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`,'_blank','noopener,noreferrer'); }
+async function salvarOrcamento(){ await reservarNumero(); const d=getData(); await addDoc(collection(db,'orcamentos'),{...d, criadoEm:serverTimestamp(), atualizadoEm:serverTimestamp(), status:'Aberto'}); alert('Orçamento salvo com sucesso.'); }
+async function buscarSalvos(){
+  const list=$('savedList'); list.innerHTML='Carregando...'; list.classList.remove('hidden'); let snaps=[];
+  try{ const q=query(collection(db,'orcamentos'), orderBy('criadoEm','desc'), limit(15)); snaps=(await getDocs(q)).docs; }catch(e){ snaps=(await getDocs(collection(db,'orcamentos'))).docs; }
+  list.innerHTML=''; if(!snaps.length){list.innerHTML='<div class="saved-item">Nenhum orçamento salvo encontrado.</div>';return;}
+  snaps.forEach(s=>{ const d=s.data(); const el=document.createElement('div'); el.className='saved-item'; el.innerHTML=`<b>${d.numero||'Sem número'}</b><br>${d.cliente?.nome||'Cliente não informado'}<br>${money(d.totais?.mensalidade||0)}`; el.onclick=()=>loadBudget(d); list.append(el); });
 }
-document.addEventListener('DOMContentLoaded', iniciar);
+function loadBudget(d){ state.numero=d.numero||state.numero; state.itens=d.itens||[]; state.descontos=d.descontos||[]; $('clienteNome').value=d.cliente?.nome||''; $('documento').value=d.cliente?.documento||''; $('responsavel').value=d.cliente?.responsavel||''; $('telefone').value=d.cliente?.telefone||''; $('email').value=d.cliente?.email||''; $('endereco').value=d.cliente?.endereco||''; $('data').value=d.data||hojeISO(); $('validade').value=d.validade||'10 dias'; $('vencimento').value=d.vencimento||'Todo dia 10'; $('implementacao').value=d.totais?.implementacao||450; updatePreview(); window.scrollTo({top:0,behavior:'smooth'}); }
+
+init();
