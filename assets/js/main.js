@@ -101,22 +101,65 @@ async function buscarClienteSalvoPorDocumento(digitos){
   return null;
 }
 
+function limparCep(cep){ return String(cep || '').replace(/[^0-9]/g, ''); }
+
+async function consultarCepPublico(cep){
+  const cepLimpo = limparCep(cep);
+  if(cepLimpo.length !== 8) return {};
+  try{
+    const resposta = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
+    if(!resposta.ok) return {};
+    const dados = await resposta.json();
+    if(dados.erro) return {};
+    return dados;
+  }catch(err){
+    console.warn('Não foi possível consultar o CEP:', err);
+    return {};
+  }
+}
+
 function montarEnderecoCnpj(dados){
-  return [dados.logradouro, dados.numero, dados.complemento, dados.bairro, dados.municipio, dados.uf, dados.cep ? `CEP: ${dados.cep}` : '']
-    .filter(Boolean)
-    .join(', ');
+  const tipoLogradouro = dados.tipo_logradouro || dados.descricao_tipo_de_logradouro || dados.tipoLogradouro || '';
+  const logradouroBase = dados.logradouro || dados.nome_logradouro || dados.descricao_logradouro || dados.endereco_logradouro || dados.rua || '';
+  const logradouro = [tipoLogradouro, logradouroBase].filter(Boolean).join(' ').trim();
+  const numero = dados.numero || dados.numero_logradouro || '';
+  const complemento = dados.complemento || '';
+  const bairro = dados.bairro || dados.distrito || '';
+  const municipio = dados.municipio || dados.cidade || dados.localidade || '';
+  const uf = dados.uf || dados.estado || '';
+  const cep = dados.cep || '';
+
+  const partes = [];
+  if(logradouro) partes.push(numero ? `${logradouro}, ${numero}` : logradouro);
+  if(complemento) partes.push(complemento);
+  if(bairro) partes.push(bairro);
+  if(municipio || uf) partes.push(`${municipio}${uf ? `/${uf}` : ''}`);
+  if(cep) partes.push(`CEP: ${cep}`);
+  return partes.join(', ');
 }
 
 async function consultarCnpjPublico(digitos){
   const resposta = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${digitos}`);
   if(!resposta.ok) throw new Error('CNPJ não encontrado na consulta pública.');
   const dados = await resposta.json();
+
+  const cepDados = await consultarCepPublico(dados.cep);
+  const dadosCompletos = {
+    ...dados,
+    logradouro: dados.logradouro || cepDados.logradouro || '',
+    bairro: dados.bairro || cepDados.bairro || '',
+    municipio: dados.municipio || cepDados.localidade || '',
+    uf: dados.uf || cepDados.uf || '',
+    complemento: dados.complemento || cepDados.complemento || '',
+    cep: dados.cep || cepDados.cep || ''
+  };
+
   return {
     nome: dados.nome_fantasia || dados.razao_social || '',
     responsavel: '',
     telefone: dados.ddd_telefone_1 || dados.ddd_telefone_2 || '',
     email: dados.email || '',
-    endereco: montarEnderecoCnpj(dados)
+    endereco: montarEnderecoCnpj(dadosCompletos)
   };
 }
 
@@ -266,55 +309,62 @@ async function elementToPdfFile(element, filename){
 async function contractToPdfFile(filename){
   const { jsPDF } = window.jspdf;
   const sourcePages = [...document.querySelectorAll('.contract-page')];
+
   const holder = document.createElement('div');
   holder.style.position = 'fixed';
   holder.style.left = '-10000px';
   holder.style.top = '0';
   holder.style.width = '210mm';
   holder.style.background = '#ffffff';
-  holder.style.color = '#0f172a';
+  holder.style.color = '#000000';
   holder.style.boxSizing = 'border-box';
-  holder.style.padding = '14mm 14mm 16mm 14mm';
+  holder.style.padding = '5mm';
   holder.style.fontFamily = 'Arial, Helvetica, sans-serif';
 
   const flow = document.createElement('div');
   flow.style.width = '100%';
-  flow.style.fontSize = '12px';
-  flow.style.lineHeight = '1.2';
+  flow.style.fontSize = '6.2px';
+  flow.style.lineHeight = '1.03';
 
-  sourcePages.forEach((page, index) => {
+  sourcePages.forEach((page) => {
     const clone = page.cloneNode(true);
     clone.style.width = '100%';
     clone.style.minHeight = 'auto';
     clone.style.height = 'auto';
-    clone.style.margin = index === sourcePages.length - 1 ? '0' : '0 0 6mm 0';
+    clone.style.margin = '0';
     clone.style.padding = '0';
     clone.style.background = 'transparent';
     clone.style.boxShadow = 'none';
     clone.style.pageBreakAfter = 'auto';
+
     clone.querySelectorAll('h1').forEach(h => {
-      h.style.fontSize = '18px';
+      h.style.fontSize = '10px';
       h.style.textAlign = 'center';
-      h.style.margin = '0 0 4mm 0';
+      h.style.margin = '0 0 2px 0';
+      h.style.lineHeight = '1.05';
     });
     clone.querySelectorAll('h2').forEach(h => {
-      h.style.fontSize = '13px';
+      h.style.fontSize = '8px';
       h.style.textAlign = 'center';
-      h.style.margin = '0 0 4mm 0';
+      h.style.margin = '0 0 2px 0';
+      h.style.lineHeight = '1.05';
     });
     clone.querySelectorAll('h3').forEach(h => {
-      h.style.fontSize = '11px';
-      h.style.margin = '4mm 0 1.5mm 0';
-      h.style.lineHeight = '1.15';
+      h.style.fontSize = '6.6px';
+      h.style.margin = '2px 0 1px 0';
+      h.style.lineHeight = '1.03';
     });
     clone.querySelectorAll('p').forEach(par => {
-      par.style.margin = '0 0 1.6mm 0';
-      par.style.lineHeight = '1.2';
-      par.style.fontSize = '11px';
+      par.style.margin = '0 0 1px 0';
+      par.style.lineHeight = '1.03';
+      par.style.fontSize = '6.2px';
+      par.style.textAlign = 'justify';
     });
     clone.querySelectorAll('.contract-signatures').forEach(block => {
-      block.style.marginTop = '6mm';
+      block.style.marginTop = '5px';
+      block.style.gap = '10px';
     });
+
     flow.appendChild(clone);
   });
 
@@ -322,7 +372,7 @@ async function contractToPdfFile(filename){
   document.body.appendChild(holder);
 
   const canvas = await html2canvas(holder, {
-    scale: 2,
+    scale: 3,
     useCORS: true,
     backgroundColor: '#ffffff',
     width: holder.scrollWidth,
@@ -335,24 +385,10 @@ async function contractToPdfFile(filename){
 
   const pdf = new jsPDF('p', 'mm', 'a4');
   const imgData = canvas.toDataURL('image/jpeg', 0.98);
-  const imgWidth = 210;
-  const imgHeight = (canvas.height * imgWidth) / canvas.width;
-  const pageHeight = 297;
-  let remaining = imgHeight;
-  let position = 0;
-
-  pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
-  remaining -= pageHeight;
-
-  while (remaining > 0) {
-    position -= pageHeight;
-    pdf.addPage();
-    pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
-    remaining -= pageHeight;
-  }
-
+  pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
   return new File([pdf.output('blob')], filename, { type: 'application/pdf' });
 }
+
 function downloadFile(file){ const url=URL.createObjectURL(file); const a=document.createElement('a'); a.href=url; a.download=file.name; document.body.append(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),800); }
 async function gerarOrcamentoPdf(){ await reservarNumero(); const d=getData(); const base=`${safeFile(d.cliente.nome)}_${d.numero}`; downloadFile(await elementToPdfFile($('orcamentoDoc'),`orcamento_${base}.pdf`)); }
 async function gerarContratoPdf(){ await reservarNumero(); const d=getData(); const base=`${safeFile(d.cliente.nome)}_${d.numero}`; downloadFile(await contractToPdfFile(`contrato_${base}.pdf`)); }
