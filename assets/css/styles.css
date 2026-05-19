@@ -16,3 +16,21 @@
 .item-row input#quantidade{padding-left:6px;padding-right:4px;text-align:center;font-size:13px;}
 .item-row label:first-child{min-width:0;}
 .item-row label:first-child select{min-width:0;}
+
+
+/* v36 budget page full-height refinement */
+.orcamento-doc{display:flex;flex-direction:column;justify-content:flex-start;}
+.orcamento-doc .items-section{margin-bottom:12px;}
+.orcamento-doc .totals-grid{margin-bottom:12px;}
+.orcamento-doc .compact{margin-bottom:12px;}
+.orcamento-doc .signatures{margin-top:auto;padding-top:10px;}
+@media print{
+  .orcamento-doc{display:flex!important;flex-direction:column!important;justify-content:flex-start!important;}
+  .orcamento-doc .signatures{margin-top:auto!important;padding-top:3mm!important;}
+}
+
+
+/* v37 contract spacing refinement */
+.contract-page{line-height:1.2;}
+.contract-page p{margin:0 0 4px;}
+.contract-page h3{margin:10px 0 4px;}
