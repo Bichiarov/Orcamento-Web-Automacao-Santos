@@ -48,7 +48,7 @@ function safeFile(v){ return String(v||'cliente').normalize('NFD').replace(/[\u0
 
 let documentLookupTimer = null;
 let lastLookupDocument = '';
-const ENDERECO_WEB_AUTOMACAO_SANTOS = ENDERECO_WEB_AUTOMACAO_SANTOS;
+const ENDERECO_WEB_AUTOMACAO_SANTOS = 'Rua Engenheiro Alfredo Capelache, 121, Apt 02, Aparecida, Santos/SP, CEP: 11035230';
 
 function init(){
   $('data').value = hojeISO();
