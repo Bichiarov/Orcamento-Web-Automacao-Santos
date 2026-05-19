@@ -118,19 +118,32 @@ async function consultarCepPublico(cep){
   }
 }
 
+function valorEndereco(dados, campos){
+  for(const campo of campos){
+    const valor = dados?.[campo];
+    if(valor !== undefined && valor !== null && String(valor).trim() !== '') return String(valor).trim();
+  }
+  return '';
+}
+
 function montarEnderecoCnpj(dados){
-  const tipoLogradouro = dados.tipo_logradouro || dados.descricao_tipo_de_logradouro || dados.tipoLogradouro || '';
-  const logradouroBase = dados.logradouro || dados.nome_logradouro || dados.descricao_logradouro || dados.endereco_logradouro || dados.rua || '';
-  const logradouro = [tipoLogradouro, logradouroBase].filter(Boolean).join(' ').trim();
-  const numero = dados.numero || dados.numero_logradouro || '';
-  const complemento = dados.complemento || '';
-  const bairro = dados.bairro || dados.distrito || '';
-  const municipio = dados.municipio || dados.cidade || dados.localidade || '';
-  const uf = dados.uf || dados.estado || '';
-  const cep = dados.cep || '';
+  const tipoLogradouro = valorEndereco(dados, ['tipo_logradouro','descricao_tipo_de_logradouro','tipoLogradouro','tipo']);
+  const logradouroBase = valorEndereco(dados, ['logradouro','nome_logradouro','descricao_logradouro','endereco_logradouro','rua','address','street']);
+  const logradouro = [tipoLogradouro, logradouroBase]
+    .filter(Boolean)
+    .join(' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const numero = valorEndereco(dados, ['numero','numero_logradouro','numero_endereco','numeroEstabelecimento','numero_estabelecimento','address_number','number']);
+  const complemento = valorEndereco(dados, ['complemento','complemento_logradouro','complemento_endereco','address_complement']);
+  const bairro = valorEndereco(dados, ['bairro','distrito','district']);
+  const municipio = valorEndereco(dados, ['municipio','cidade','localidade','city']);
+  const uf = valorEndereco(dados, ['uf','estado','state']);
+  const cep = valorEndereco(dados, ['cep','zipcode']);
 
   const partes = [];
-  if(logradouro) partes.push(numero ? `${logradouro}, ${numero}` : logradouro);
+  if(logradouro) partes.push(numero ? `${logradouro}, nº ${numero}` : logradouro);
   if(complemento) partes.push(complemento);
   if(bairro) partes.push(bairro);
   if(municipio || uf) partes.push(`${municipio}${uf ? `/${uf}` : ''}`);
@@ -146,11 +159,12 @@ async function consultarCnpjPublico(digitos){
   const cepDados = await consultarCepPublico(dados.cep);
   const dadosCompletos = {
     ...dados,
-    logradouro: dados.logradouro || cepDados.logradouro || '',
+    logradouro: dados.logradouro || dados.descricao_logradouro || dados.rua || cepDados.logradouro || '',
+    numero: dados.numero || dados.numero_logradouro || dados.numero_endereco || dados.numeroEstabelecimento || dados.numero_estabelecimento || '',
+    complemento: dados.complemento || dados.complemento_logradouro || dados.complemento_endereco || cepDados.complemento || '',
     bairro: dados.bairro || cepDados.bairro || '',
-    municipio: dados.municipio || cepDados.localidade || '',
-    uf: dados.uf || cepDados.uf || '',
-    complemento: dados.complemento || cepDados.complemento || '',
+    municipio: dados.municipio || dados.cidade || cepDados.localidade || '',
+    uf: dados.uf || dados.estado || cepDados.uf || '',
     cep: dados.cep || cepDados.cep || ''
   };
 
