@@ -48,7 +48,6 @@ function safeFile(v){ return String(v||'cliente').normalize('NFD').replace(/[\u0
 
 let documentLookupTimer = null;
 let lastLookupDocument = '';
-const ENDERECO_WEB_AUTOMACAO_SANTOS = 'Rua Engenheiro Alfredo Capelache, 121, Apt 02, Aparecida, Santos/SP, CEP: 11035230';
 
 function init(){
   $('data').value = hojeISO();
@@ -60,8 +59,8 @@ function bindEvents(){
   ['clienteNome','data','telefone','responsavel','email','endereco','implementacao','validade','vencimento'].forEach(id=>$(id).addEventListener('input', updatePreview));
   $('documento').addEventListener('input', onDocumentoInput);
   $('addItem').onclick = addItem;
-  $('clearBudget').onclick = () => { state.itens = []; state.descontos = []; updatePreview(); };
-  $('removeLast').onclick = () => { state.itens.pop(); updatePreview(); };
+  $('clearBudget').onclick = () => { state.itens = [{ descricao: produtosPadrao[0].nome, quantidade: 1, valor: state.precos[produtosPadrao[0].nome] || produtosPadrao[0].valor }]; state.descontos = []; updatePreview(); };
+  $('removeLast').onclick = () => { if(state.itens.length > 1) state.itens.pop(); updatePreview(); };
   $('togglePrices').onclick = () => $('pricePanel').classList.toggle('hidden');
   $('resetPrices').onclick = () => { state.precos = Object.fromEntries(produtosPadrao.map(p => [p.nome, p.valor])); renderPriceList(); };
   $('addDiscount').onclick = addDiscount;
@@ -81,42 +80,23 @@ function setLookupStatus(msg, type='info'){
   el.className = `lookup-status ${type}`;
 }
 
-function enderecoPareceCompleto(valor){
-  const texto = String(valor || '').trim();
-  if(!texto) return false;
-  return /,\s*(n[ºo]?\s*)?\d+/i.test(texto) || /\bnumero\s*[:º]?\s*\d+/i.test(texto) || /\bn[ºo]\s*\d+/i.test(texto);
-}
-
-function preencherCliente(clienteData, sobrescreverTudo = false){
+function preencherCliente(clienteData, sobrescrever=false){
   if(!clienteData) return;
-
-  const aplicar = (id, valor) => {
-    const el = $(id);
-    if(!el) return;
-    if(sobrescreverTudo){
-      el.value = valor || '';
-      return;
-    }
-    if(valor && !el.value) el.value = valor;
-  };
-
-  aplicar('clienteNome', clienteData.nome);
-  aplicar('responsavel', clienteData.responsavel);
-  aplicar('telefone', clienteData.telefone);
-  aplicar('email', clienteData.email);
-
-  const enderecoAtual = $('endereco').value;
-  if(clienteData.endereco){
-    if(sobrescreverTudo || !enderecoAtual || !enderecoPareceCompleto(enderecoAtual)){
-      $('endereco').value = clienteData.endereco;
-    }
-  }else if(sobrescreverTudo){
-    $('endereco').value = '';
+  if(sobrescrever){
+    if(clienteData.nome) $('clienteNome').value = clienteData.nome;
+    if(clienteData.responsavel) $('responsavel').value = clienteData.responsavel;
+    if(clienteData.telefone) $('telefone').value = clienteData.telefone;
+    if(clienteData.email) $('email').value = clienteData.email;
+    if(clienteData.endereco) $('endereco').value = clienteData.endereco;
+  }else{
+    if(clienteData.nome && !$('clienteNome').value) $('clienteNome').value = clienteData.nome;
+    if(clienteData.responsavel && !$('responsavel').value) $('responsavel').value = clienteData.responsavel;
+    if(clienteData.telefone && !$('telefone').value) $('telefone').value = clienteData.telefone;
+    if(clienteData.email && !$('email').value) $('email').value = clienteData.email;
+    if(clienteData.endereco && !$('endereco').value) $('endereco').value = clienteData.endereco;
   }
-
   updatePreview();
 }
-
 
 async function buscarClienteSalvoPorDocumento(digitos){
   try{
@@ -129,204 +109,103 @@ async function buscarClienteSalvoPorDocumento(digitos){
   return null;
 }
 
-function limparCep(cep){ return String(cep || '').replace(/[^0-9]/g, ''); }
-
-async function consultarCepPublico(cep){
-  const cepLimpo = limparCep(cep);
-  if(cepLimpo.length !== 8) return {};
-  try{
-    const resposta = await fetch(`https://viacep.com.br/ws/${cepLimpo}/json/`);
-    if(!resposta.ok) return {};
-    const dados = await resposta.json();
-    if(dados.erro) return {};
-    return dados;
-  }catch(err){
-    console.warn('Não foi possível consultar o CEP:', err);
-    return {};
-  }
+function enderecoWebAutomacao(){
+  return 'Rua Engenheiro Alfredo Capelache, 121, Apt 02, Aparecida, Santos/SP, CEP: 11035230';
 }
-
-function valorEndereco(dados, campos){
-  for(const campo of campos){
-    const valor = dados?.[campo];
-    if(valor !== undefined && valor !== null && String(valor).trim() !== '') return String(valor).trim();
-  }
-  return '';
-}
-
-function obterResponsavelCnpj(dados){
-  const direto = valorEndereco(dados, [
-    'responsavel',
-    'responsavel_federativo',
-    'nome_responsavel',
-    'representante_legal',
-    'administrador',
-    'nome_administrador'
-  ]);
-  if(direto && direto !== '-') return direto;
-
-  const qsa = Array.isArray(dados.qsa) ? dados.qsa : [];
-  const socioAdministrador = qsa.find((socio) => {
-    const qualificacao = String(socio.qualificacao_socio || socio.qualificacao || '').toLowerCase();
-    return qualificacao.includes('administrador') || qualificacao.includes('sócio') || qualificacao.includes('socio') || qualificacao.includes('diretor') || qualificacao.includes('titular');
-  }) || qsa[0];
-
-  const socioNome = valorEndereco(socioAdministrador || {}, ['nome_socio', 'nome', 'name']);
-  if(socioNome) return socioNome;
-
-  return dados.nome_fantasia || dados.razao_social || '';
-}
-
 
 function montarEnderecoCnpj(dados){
-  const tipoLogradouro = valorEndereco(dados, ['tipo_logradouro','descricao_tipo_de_logradouro','tipoLogradouro','tipo']);
-  const logradouroBase = valorEndereco(dados, ['logradouro','nome_logradouro','descricao_logradouro','endereco_logradouro','rua','address','street']);
-  const logradouro = [tipoLogradouro, logradouroBase]
+  const cnpj = onlyNums(dados.cnpj || dados.documento || '');
+  if(cnpj === '23349902000133') return enderecoWebAutomacao();
+
+  const tipo = dados.tipo_logradouro || dados.descricao_tipo_de_logradouro || '';
+  const logradouro = dados.logradouro || dados.nome_logradouro || dados.descricao_logradouro || dados.rua || '';
+  const rua = [tipo, logradouro].filter(Boolean).join(' ').trim();
+  const numero = dados.numero || dados.numero_logradouro || dados.numeroLogradouro || '';
+  const complemento = dados.complemento || dados.complemento_logradouro || dados.apartamento || dados.sala || '';
+  return [rua ? (numero ? `${rua}, ${numero}` : rua) : '', complemento, dados.bairro, dados.municipio || dados.cidade, dados.uf, dados.cep ? `CEP: ${dados.cep}` : '']
     .filter(Boolean)
-    .join(' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-
-  const numero = valorEndereco(dados, ['numero','numero_logradouro','numero_endereco','numeroEstabelecimento','numero_estabelecimento','address_number','number']);
-  const complemento = valorEndereco(dados, ['complemento','complemento_logradouro','complemento_endereco','address_complement']);
-  const bairro = valorEndereco(dados, ['bairro','distrito','district']);
-  const municipio = valorEndereco(dados, ['municipio','cidade','localidade','city']);
-  const uf = valorEndereco(dados, ['uf','estado','state']);
-  const cep = valorEndereco(dados, ['cep','zipcode']);
-
-  const partes = [];
-  if(logradouro) partes.push(numero ? `${logradouro}, nº ${numero}` : logradouro);
-  if(complemento) partes.push(complemento);
-  if(bairro) partes.push(bairro);
-  if(municipio || uf) partes.push(`${municipio}${uf ? `/${uf}` : ''}`);
-  if(cep) partes.push(`CEP: ${cep}`);
-  return partes.join(', ');
-}
-
-function aplicarOverrideCnpj(digitos, dados){
-  const normalizado = onlyNums(digitos);
-  if(normalizado === '23349902000133'){
-    return {
-      ...dados,
-      razao_social: dados.razao_social || 'ALEXANDER EMIDIO BICHIAROV 30642954895',
-      nome_fantasia: dados.nome_fantasia || 'Web Automação Santos',
-      email: dados.email || 'alexander.bichiarov@gmail.com',
-      logradouro: dados.logradouro || 'Rua Engenheiro Alfredo Capelache',
-      numero: dados.numero || '121',
-      complemento: dados.complemento || 'Apt 02',
-      bairro: dados.bairro || 'Aparecida',
-      municipio: dados.municipio || 'Santos',
-      uf: dados.uf || 'SP',
-      cep: dados.cep || '11035230'
-    };
-  }
-  return dados;
+    .join(', ');
 }
 
 async function consultarCnpjPublico(digitos){
+  if(digitos === '23349902000133'){
+    return {
+      nome: 'ALEXANDER EMIDIO BICHIAROV 30642954895',
+      responsavel: 'ALEXANDER EMIDIO BICHIAROV',
+      telefone: '',
+      email: '',
+      endereco: enderecoWebAutomacao()
+    };
+  }
+
   const resposta = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${digitos}`);
   if(!resposta.ok) throw new Error('CNPJ não encontrado na consulta pública.');
-  const dadosOriginais = await resposta.json();
-  const dados = aplicarOverrideCnpj(digitos, dadosOriginais);
-
-  const cepDados = await consultarCepPublico(dados.cep);
-  const dadosCompletos = {
-    ...dados,
-    logradouro: dados.logradouro || dados.nome_logradouro || dados.descricao_logradouro || dados.rua || cepDados.logradouro || '',
-    numero: dados.numero || dados.numero_logradouro || dados.numero_endereco || dados.numeroEstabelecimento || dados.numero_estabelecimento || '',
-    complemento: dados.complemento || dados.complemento_logradouro || dados.complemento_endereco || cepDados.complemento || '',
-    bairro: dados.bairro || cepDados.bairro || '',
-    municipio: dados.municipio || dados.cidade || cepDados.localidade || '',
-    uf: dados.uf || dados.estado || cepDados.uf || '',
-    cep: dados.cep || cepDados.cep || ''
-  };
+  const dados = await resposta.json();
+  const qsa = Array.isArray(dados.qsa) && dados.qsa.length ? dados.qsa[0] : null;
+  const responsavel =
+    dados.responsavel_federativo ||
+    dados.responsavel ||
+    dados.nome_responsavel ||
+    qsa?.nome_socio ||
+    qsa?.nome ||
+    '';
 
   return {
     nome: dados.nome_fantasia || dados.razao_social || '',
-    responsavel: obterResponsavelCnpj(dadosCompletos),
-    telefone: dados.ddd_telefone_1 || dados.ddd_telefone_2 || dados.telefone || '',
+    responsavel,
+    telefone: dados.ddd_telefone_1 || dados.ddd_telefone_2 || '',
     email: dados.email || '',
-    endereco: digitos === '23349902000133' ? ENDERECO_WEB_AUTOMACAO_SANTOS : montarEnderecoCnpj(dadosCompletos)
+    endereco: montarEnderecoCnpj({...dados, cnpj: digitos})
   };
 }
 
-
 async function preencherDadosPorDocumento(digitos){
-  if(!digitos) return;
+  if(!digitos || digitos === lastLookupDocument) return;
   if(digitos.length !== 11 && digitos.length !== 14) return;
 
-  const isCnpj = digitos.length === 14;
   lastLookupDocument = digitos;
-
+  const isCnpj = digitos.length === 14;
   setLookupStatus(isCnpj ? 'Buscando CNPJ...' : 'Buscando cliente salvo...');
 
-  if(isCnpj){
-    // Ao trocar de CNPJ, limpa os dados variáveis para não manter informações do CNPJ anterior.
-    $('clienteNome').value = '';
-    $('responsavel').value = '';
-    $('telefone').value = '';
-    $('email').value = '';
-    $('endereco').value = '';
-    updatePreview();
-
-    let clienteSalvo = null;
-    try{ clienteSalvo = await buscarClienteSalvoPorDocumento(digitos); }catch(e){}
-
-    try{
-      const dadosCnpj = await consultarCnpjPublico(digitos);
-      const dadosFinal = {
-        ...(clienteSalvo || {}),
-        ...dadosCnpj,
-        // Se a consulta pública não trouxer e-mail ou responsável, usa o cadastro salvo como fallback.
-        email: dadosCnpj.email || clienteSalvo?.email || '',
-        responsavel: dadosCnpj.responsavel || clienteSalvo?.responsavel || '',
-        telefone: dadosCnpj.telefone || clienteSalvo?.telefone || '',
-        endereco: digitos === '23349902000133' ? ENDERECO_WEB_AUTOMACAO_SANTOS : (dadosCnpj.endereco || clienteSalvo?.endereco || '')
-      };
-      preencherCliente(dadosFinal, true);
-      setLookupStatus('Dados preenchidos pela consulta pública do CNPJ.', 'ok');
-      return;
-    }catch(err){
-      console.warn(err);
-      if(clienteSalvo){
-        preencherCliente(clienteSalvo, true);
-        setLookupStatus('Dados salvos carregados. Não foi possível atualizar pela consulta pública.', 'warn');
-      }else{
-        setLookupStatus('Não foi possível consultar este CNPJ. Preencha manualmente.', 'warn');
-      }
-      return;
-    }
-  }
-
   const clienteSalvo = await buscarClienteSalvoPorDocumento(digitos);
-  if(clienteSalvo){
+  if(clienteSalvo && !isCnpj){
     preencherCliente(clienteSalvo, true);
     setLookupStatus('Dados preenchidos pelo cadastro salvo.', 'ok');
-  }else{
+    return;
+  }
+
+  if(!isCnpj){
     setLookupStatus('CPF não encontrado nos clientes salvos. Preencha manualmente.', 'warn');
+    return;
+  }
+
+  try{
+    const dadosCnpj = await consultarCnpjPublico(digitos);
+    const mesclado = {...(clienteSalvo || {}), ...dadosCnpj};
+    preencherCliente(mesclado, true);
+    setLookupStatus('Dados preenchidos pela consulta pública do CNPJ.', 'ok');
+  }catch(err){
+    console.warn(err);
+    setLookupStatus('Não foi possível consultar este CNPJ. Preencha manualmente.', 'warn');
   }
 }
-
 
 function onDocumentoInput(e){
   e.target.value = fmtDoc(e.target.value);
   const digitos = onlyNums(e.target.value);
   $('docLabel').textContent = docLabel(e.target.value);
-  if(digitos === '23349902000133'){
-    $('endereco').value = ENDERECO_WEB_AUTOMACAO_SANTOS;
+  if(digitos !== lastLookupDocument){
+    ['clienteNome','responsavel','telefone','email','endereco'].forEach(id => { if($(id)) $(id).value = ''; });
   }
   updatePreview();
   clearTimeout(documentLookupTimer);
   setLookupStatus('');
   if(digitos.length === 11 || digitos.length === 14){
-    if(digitos !== lastLookupDocument){
-      documentLookupTimer = setTimeout(() => preencherDadosPorDocumento(digitos), 650);
-    }
+    documentLookupTimer = setTimeout(() => preencherDadosPorDocumento(digitos), 650);
   }else{
     lastLookupDocument = '';
   }
 }
-
 
 function renderPriceList(){
   const list = $('priceList'); list.innerHTML = '';
@@ -430,62 +309,55 @@ async function elementToPdfFile(element, filename){
 async function contractToPdfFile(filename){
   const { jsPDF } = window.jspdf;
   const sourcePages = [...document.querySelectorAll('.contract-page')];
-
   const holder = document.createElement('div');
   holder.style.position = 'fixed';
   holder.style.left = '-10000px';
   holder.style.top = '0';
   holder.style.width = '210mm';
   holder.style.background = '#ffffff';
-  holder.style.color = '#000000';
+  holder.style.color = '#0f172a';
   holder.style.boxSizing = 'border-box';
-  holder.style.padding = '5mm';
+  holder.style.padding = '14mm 14mm 16mm 14mm';
   holder.style.fontFamily = 'Arial, Helvetica, sans-serif';
 
   const flow = document.createElement('div');
   flow.style.width = '100%';
-  flow.style.fontSize = '6.2px';
-  flow.style.lineHeight = '1.03';
+  flow.style.fontSize = '12px';
+  flow.style.lineHeight = '1.2';
 
-  sourcePages.forEach((page) => {
+  sourcePages.forEach((page, index) => {
     const clone = page.cloneNode(true);
     clone.style.width = '100%';
     clone.style.minHeight = 'auto';
     clone.style.height = 'auto';
-    clone.style.margin = '0';
+    clone.style.margin = index === sourcePages.length - 1 ? '0' : '0 0 6mm 0';
     clone.style.padding = '0';
     clone.style.background = 'transparent';
     clone.style.boxShadow = 'none';
     clone.style.pageBreakAfter = 'auto';
-
     clone.querySelectorAll('h1').forEach(h => {
-      h.style.fontSize = '10px';
+      h.style.fontSize = '18px';
       h.style.textAlign = 'center';
-      h.style.margin = '0 0 2px 0';
-      h.style.lineHeight = '1.05';
+      h.style.margin = '0 0 4mm 0';
     });
     clone.querySelectorAll('h2').forEach(h => {
-      h.style.fontSize = '8px';
+      h.style.fontSize = '13px';
       h.style.textAlign = 'center';
-      h.style.margin = '0 0 2px 0';
-      h.style.lineHeight = '1.05';
+      h.style.margin = '0 0 4mm 0';
     });
     clone.querySelectorAll('h3').forEach(h => {
-      h.style.fontSize = '6.6px';
-      h.style.margin = '2px 0 1px 0';
-      h.style.lineHeight = '1.03';
+      h.style.fontSize = '11px';
+      h.style.margin = '4mm 0 1.5mm 0';
+      h.style.lineHeight = '1.15';
     });
     clone.querySelectorAll('p').forEach(par => {
-      par.style.margin = '0 0 1px 0';
-      par.style.lineHeight = '1.03';
-      par.style.fontSize = '6.2px';
-      par.style.textAlign = 'justify';
+      par.style.margin = '0 0 1.6mm 0';
+      par.style.lineHeight = '1.2';
+      par.style.fontSize = '11px';
     });
     clone.querySelectorAll('.contract-signatures').forEach(block => {
-      block.style.marginTop = '5px';
-      block.style.gap = '10px';
+      block.style.marginTop = '6mm';
     });
-
     flow.appendChild(clone);
   });
 
@@ -493,7 +365,7 @@ async function contractToPdfFile(filename){
   document.body.appendChild(holder);
 
   const canvas = await html2canvas(holder, {
-    scale: 3,
+    scale: 2,
     useCORS: true,
     backgroundColor: '#ffffff',
     width: holder.scrollWidth,
@@ -506,10 +378,24 @@ async function contractToPdfFile(filename){
 
   const pdf = new jsPDF('p', 'mm', 'a4');
   const imgData = canvas.toDataURL('image/jpeg', 0.98);
-  pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+  const imgWidth = 210;
+  const imgHeight = (canvas.height * imgWidth) / canvas.width;
+  const pageHeight = 297;
+  let remaining = imgHeight;
+  let position = 0;
+
+  pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+  remaining -= pageHeight;
+
+  while (remaining > 0) {
+    position -= pageHeight;
+    pdf.addPage();
+    pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
+    remaining -= pageHeight;
+  }
+
   return new File([pdf.output('blob')], filename, { type: 'application/pdf' });
 }
-
 function downloadFile(file){ const url=URL.createObjectURL(file); const a=document.createElement('a'); a.href=url; a.download=file.name; document.body.append(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),800); }
 async function gerarOrcamentoPdf(){ await reservarNumero(); const d=getData(); const base=`${safeFile(d.cliente.nome)}_${d.numero}`; downloadFile(await elementToPdfFile($('orcamentoDoc'),`orcamento_${base}.pdf`)); }
 async function gerarContratoPdf(){ await reservarNumero(); const d=getData(); const base=`${safeFile(d.cliente.nome)}_${d.numero}`; downloadFile(await contractToPdfFile(`contrato_${base}.pdf`)); }
