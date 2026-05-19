@@ -34,3 +34,12 @@
 .contract-page{line-height:1.2;}
 .contract-page p{margin:0 0 4px;}
 .contract-page h3{margin:10px 0 4px;}
+
+
+/* v39 official full contract from model */
+.full-contract{font-size:11px;line-height:1.2;}
+.full-contract h1{font-size:18px;text-align:center;margin:0 0 5mm;}
+.full-contract h2{font-size:13px;text-align:center;margin:0 0 5mm;}
+.full-contract h3{font-size:11px;margin:3.5mm 0 1.2mm;font-weight:900;}
+.full-contract p{font-size:10.7px;line-height:1.2;margin:0 0 1.6mm;text-align:justify;}
+.full-contract .contract-signatures{margin-top:10mm;}
