@@ -22,7 +22,7 @@
       </section>
 
       <section class="form-grid two">
-        <label><span id="docLabel">CPF/CNPJ</span><input id="documento" placeholder="CPF ou CNPJ" /></label>
+        <label><span id="docLabel">CPF/CNPJ</span><input id="documento" placeholder="CPF ou CNPJ" /><small id="docLookupStatus" class="lookup-status"></small></label>
         <label><span>Telefone</span><input id="telefone" placeholder="WhatsApp" /></label>
       </section>
 
@@ -35,10 +35,7 @@
         <label><span>Qtd.</span><input id="quantidade" type="number" min="1" value="1" /></label>
       </section>
 
-      <div class="button-row two">
-        <button id="addItem" class="btn primary">Adicionar item</button>
-        <button id="clearBudget" class="btn danger-light">Limpar orçamento</button>
-      </div>
+      <button id="addItem" class="btn primary full">Adicionar item</button>
 
       <button id="togglePrices" class="btn outline full">Ajuste de preço</button>
       <section id="pricePanel" class="price-panel hidden">
@@ -75,15 +72,34 @@
         <label><span>Vencimento</span><input id="vencimento" value="Todo dia 10" /></label>
       </section>
 
-      <section class="actions">
-        <button id="saveBudget" class="btn save full">Salvar orçamento</button>
-        <button id="loadSaved" class="btn outline full">Buscar salvos</button>
-        <div id="savedList" class="saved-list hidden"></div>
-        <div class="button-row two">
-          <button id="generatePdfs" class="btn primary">Gerar orçamento + contrato</button>
-          <button id="removeLast" class="btn dark">Remover último item</button>
+      <section class="actions action-flow">
+        <div class="action-group">
+          <p class="action-title">1. Salvar e consultar</p>
+          <button id="saveBudget" class="btn save full">Salvar orçamento</button>
+          <button id="loadSaved" class="btn outline full">Buscar salvos</button>
+          <div id="savedList" class="saved-list hidden"></div>
         </div>
-        <button id="sendWhats" class="btn whatsapp full">Enviar orçamento por WhatsApp</button>
+
+        <div class="action-group">
+          <p class="action-title">2. Gerar documentos</p>
+          <div class="button-row two equal-actions">
+            <button id="generatePdfs" class="btn primary">Gerar orçamento</button>
+            <button id="generateContract" class="btn dark">Gerar contrato</button>
+          </div>
+        </div>
+
+        <div class="action-group">
+          <p class="action-title">3. Enviar ao cliente</p>
+          <button id="sendWhats" class="btn whatsapp full">Enviar orçamento por WhatsApp</button>
+        </div>
+
+        <div class="action-group">
+          <p class="action-title">4. Ajustes</p>
+          <div class="button-row two equal-actions">
+            <button id="removeLast" class="btn dark">Remover último item</button>
+            <button id="clearBudget" class="btn danger-light">Limpar orçamento</button>
+          </div>
+        </div>
       </section>
     </aside>
 

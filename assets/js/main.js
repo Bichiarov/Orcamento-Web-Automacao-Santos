@@ -42,9 +42,12 @@ const money = v => Number(v || 0).toLocaleString('pt-BR', { style:'currency', cu
 function hojeISO(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 function dataBR(v){ if(!v) return ''; const [a,m,d]=v.split('-'); return `${d}/${m}/${a}`; }
 function onlyNums(v){ return String(v||'').replace(/[^0-9]/g,''); }
-function docLabel(v){ return onlyNums(v).length > 11 ? 'CNPJ' : 'CPF/CNPJ'; }
+function docLabel(v){ const n=onlyNums(v); if(!n.length) return 'CPF/CNPJ'; return n.length > 11 ? 'CNPJ' : 'CPF'; }
 function fmtDoc(v){ const d=onlyNums(v).slice(0,14); if(d.length<=11) return d.replace(/([0-9]{3})([0-9])/,'$1.$2').replace(/([0-9]{3})([0-9])/,'$1.$2').replace(/([0-9]{3})([0-9]{1,2})$/,'$1-$2'); return d.replace(/([0-9]{2})([0-9])/,'$1.$2').replace(/([0-9]{3})([0-9])/,'$1.$2').replace(/([0-9]{3})([0-9])/,'$1/$2').replace(/([0-9]{4})([0-9]{1,2})$/,'$1-$2'); }
 function safeFile(v){ return String(v||'cliente').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/gi,'_').toLowerCase(); }
+
+let documentLookupTimer = null;
+let lastLookupDocument = '';
 
 function init(){
   $('data').value = hojeISO();
@@ -53,18 +56,112 @@ function init(){
 }
 
 function bindEvents(){
-  ['clienteNome','data','documento','telefone','responsavel','email','endereco','implementacao','validade','vencimento'].forEach(id=>$(id).addEventListener('input', updatePreview));
-  $('documento').addEventListener('input', e => { e.target.value = fmtDoc(e.target.value); $('docLabel').textContent = docLabel(e.target.value); updatePreview(); });
+  ['clienteNome','data','telefone','responsavel','email','endereco','implementacao','validade','vencimento'].forEach(id=>$(id).addEventListener('input', updatePreview));
+  $('documento').addEventListener('input', onDocumentoInput);
   $('addItem').onclick = addItem;
   $('clearBudget').onclick = () => { state.itens = []; state.descontos = []; updatePreview(); };
   $('removeLast').onclick = () => { state.itens.pop(); updatePreview(); };
   $('togglePrices').onclick = () => $('pricePanel').classList.toggle('hidden');
   $('resetPrices').onclick = () => { state.precos = Object.fromEntries(produtosPadrao.map(p => [p.nome, p.valor])); renderPriceList(); };
   $('addDiscount').onclick = addDiscount;
-  $('generatePdfs').onclick = gerarOrcamentoContrato;
+  $('generatePdfs').onclick = gerarOrcamentoPdf;
+  const gerarContratoBtn = $('generateContract');
+  if(gerarContratoBtn) gerarContratoBtn.onclick = gerarContratoPdf;
   $('sendWhats').onclick = enviarWhatsApp;
   $('saveBudget').onclick = salvarOrcamento;
   $('loadSaved').onclick = buscarSalvos;
+}
+
+
+function setLookupStatus(msg, type='info'){
+  const el = $('docLookupStatus');
+  if(!el) return;
+  el.textContent = msg || '';
+  el.className = `lookup-status ${type}`;
+}
+
+function preencherCliente(clienteData){
+  if(!clienteData) return;
+  if(clienteData.nome && !$('clienteNome').value) $('clienteNome').value = clienteData.nome;
+  if(clienteData.responsavel && !$('responsavel').value) $('responsavel').value = clienteData.responsavel;
+  if(clienteData.telefone && !$('telefone').value) $('telefone').value = clienteData.telefone;
+  if(clienteData.email && !$('email').value) $('email').value = clienteData.email;
+  if(clienteData.endereco && !$('endereco').value) $('endereco').value = clienteData.endereco;
+  updatePreview();
+}
+
+async function buscarClienteSalvoPorDocumento(digitos){
+  try{
+    const ref = doc(db, 'clientes', digitos);
+    const snap = await getDoc(ref);
+    if(snap.exists()) return snap.data();
+  }catch(err){
+    console.warn('Não foi possível buscar cliente salvo:', err);
+  }
+  return null;
+}
+
+function montarEnderecoCnpj(dados){
+  return [dados.logradouro, dados.numero, dados.complemento, dados.bairro, dados.municipio, dados.uf, dados.cep ? `CEP: ${dados.cep}` : '']
+    .filter(Boolean)
+    .join(', ');
+}
+
+async function consultarCnpjPublico(digitos){
+  const resposta = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${digitos}`);
+  if(!resposta.ok) throw new Error('CNPJ não encontrado na consulta pública.');
+  const dados = await resposta.json();
+  return {
+    nome: dados.nome_fantasia || dados.razao_social || '',
+    responsavel: '',
+    telefone: dados.ddd_telefone_1 || dados.ddd_telefone_2 || '',
+    email: dados.email || '',
+    endereco: montarEnderecoCnpj(dados)
+  };
+}
+
+async function preencherDadosPorDocumento(digitos){
+  if(!digitos || digitos === lastLookupDocument) return;
+  if(digitos.length !== 11 && digitos.length !== 14) return;
+
+  lastLookupDocument = digitos;
+  const isCnpj = digitos.length === 14;
+  setLookupStatus(isCnpj ? 'Buscando CNPJ...' : 'Buscando cliente salvo...');
+
+  const clienteSalvo = await buscarClienteSalvoPorDocumento(digitos);
+  if(clienteSalvo){
+    preencherCliente(clienteSalvo);
+    setLookupStatus('Dados preenchidos pelo cadastro salvo.', 'ok');
+    return;
+  }
+
+  if(!isCnpj){
+    setLookupStatus('CPF não encontrado nos clientes salvos. Preencha manualmente.', 'warn');
+    return;
+  }
+
+  try{
+    const dadosCnpj = await consultarCnpjPublico(digitos);
+    preencherCliente(dadosCnpj);
+    setLookupStatus('Dados preenchidos pela consulta pública do CNPJ.', 'ok');
+  }catch(err){
+    console.warn(err);
+    setLookupStatus('Não foi possível consultar este CNPJ. Preencha manualmente.', 'warn');
+  }
+}
+
+function onDocumentoInput(e){
+  e.target.value = fmtDoc(e.target.value);
+  const digitos = onlyNums(e.target.value);
+  $('docLabel').textContent = docLabel(e.target.value);
+  updatePreview();
+  clearTimeout(documentLookupTimer);
+  setLookupStatus('');
+  if(digitos.length === 11 || digitos.length === 14){
+    documentLookupTimer = setTimeout(() => preencherDadosPorDocumento(digitos), 650);
+  }else{
+    lastLookupDocument = '';
+  }
 }
 
 function renderPriceList(){
@@ -147,9 +244,21 @@ async function contractToPdfFile(filename){
   return new File([pdf.output('blob')],filename,{type:'application/pdf'});
 }
 function downloadFile(file){ const url=URL.createObjectURL(file); const a=document.createElement('a'); a.href=url; a.download=file.name; document.body.append(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),800); }
-async function gerarOrcamentoContrato(){ await reservarNumero(); const d=getData(); const base=`${safeFile(d.cliente.nome)}_${d.numero}`; downloadFile(await elementToPdfFile($('orcamentoDoc'),`orcamento_${base}.pdf`)); downloadFile(await contractToPdfFile(`contrato_${base}.pdf`)); }
+async function gerarOrcamentoPdf(){ await reservarNumero(); const d=getData(); const base=`${safeFile(d.cliente.nome)}_${d.numero}`; downloadFile(await elementToPdfFile($('orcamentoDoc'),`orcamento_${base}.pdf`)); }
+async function gerarContratoPdf(){ await reservarNumero(); const d=getData(); const base=`${safeFile(d.cliente.nome)}_${d.numero}`; downloadFile(await contractToPdfFile(`contrato_${base}.pdf`)); }
 async function enviarWhatsApp(){ await reservarNumero(); const d=getData(); downloadFile(await elementToPdfFile($('orcamentoDoc'),`orcamento_${safeFile(d.cliente.nome)}_${d.numero}.pdf`)); const msg = `Olá! Tudo bem? Somos da Web Automação Santos. Segue o orçamento comercial do PDV Legal preparado para sua empresa.\n\nO orçamento em PDF foi baixado no dispositivo. Anexe o arquivo nesta conversa do WhatsApp.`; window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`,'_blank','noopener,noreferrer'); }
-async function salvarOrcamento(){ await reservarNumero(); const d=getData(); await addDoc(collection(db,'orcamentos'),{...d, criadoEm:serverTimestamp(), atualizadoEm:serverTimestamp(), status:'Aberto'}); alert('Orçamento salvo com sucesso.'); }
+async function salvarCliente(d){
+  const digitos = onlyNums(d.cliente.documento);
+  if(!digitos) return;
+  await setDoc(doc(db, 'clientes', digitos), {
+    ...d.cliente,
+    documentoNumeros: digitos,
+    tipoDocumento: digitos.length > 11 ? 'CNPJ' : 'CPF',
+    atualizadoEm: serverTimestamp(),
+    criadoEm: serverTimestamp()
+  }, { merge: true });
+}
+async function salvarOrcamento(){ await reservarNumero(); const d=getData(); await salvarCliente(d); await addDoc(collection(db,'orcamentos'),{...d, documentoNumeros: onlyNums(d.cliente.documento), criadoEm:serverTimestamp(), atualizadoEm:serverTimestamp(), status:'Aberto'}); alert('Orçamento salvo com sucesso.'); }
 async function buscarSalvos(){
   const list=$('savedList'); list.innerHTML='Carregando...'; list.classList.remove('hidden'); let snaps=[];
   try{ const q=query(collection(db,'orcamentos'), orderBy('criadoEm','desc'), limit(15)); snaps=(await getDocs(q)).docs; }catch(e){ snaps=(await getDocs(collection(db,'orcamentos'))).docs; }
