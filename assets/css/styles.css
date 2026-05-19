@@ -3,3 +3,12 @@
 
 .action-flow{display:grid;gap:14px}.action-group{display:block}.action-title{margin:0 0 8px;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.05em;color:#64748b}.equal-actions .btn{min-height:54px;display:flex;align-items:center;justify-content:center;line-height:1.15}.actions .btn.full{min-height:48px;display:flex;align-items:center;justify-content:center}.btn{line-height:1.15}
 @media(max-width:420px){.button-row.two.equal-actions{grid-template-columns:1fr}.action-title{font-size:10.5px}}
+
+
+/* v32 refinements */
+#produtoSelecionado option{font-size:13px;}
+.orcamento-doc{width:210mm;min-height:297mm;padding:8mm;}
+@media print{.doc-page{width:210mm!important;min-height:297mm!important;max-height:297mm!important;padding:6mm!important;margin:0!important}.orcamento-doc{width:210mm!important;height:297mm!important;max-height:297mm!important}.box,.items-section,.totals-grid{margin-bottom:3mm!important}.doc-header{margin-bottom:4mm!important}.signatures{margin-top:8mm!important}}
+.contract-page{line-height:1.35;}
+.contract-page p{margin:0 0 9px;}
+.contract-page h3{margin:14px 0 7px;}

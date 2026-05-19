@@ -51,7 +51,7 @@ let lastLookupDocument = '';
 
 function init(){
   $('data').value = hojeISO();
-  produtosPadrao.forEach(p => $('produtoSelecionado').append(new Option(`${p.nome} — ${money(p.valor)}`, p.nome)));
+  produtosPadrao.forEach(p => $('produtoSelecionado').append(new Option(p.nome, p.nome)));
   renderPriceList(); bindEvents(); updatePreview();
 }
 
@@ -234,9 +234,34 @@ async function reservarNumero(){
 }
 
 async function elementToPdfFile(element, filename){
-  const canvas = await html2canvas(element,{scale:2,useCORS:true,backgroundColor:'#ffffff'});
-  const { jsPDF } = window.jspdf; const pdf = new jsPDF('p','mm','a4');
-  const img = canvas.toDataURL('image/jpeg',0.98); const pageW=210,pageH=297,margin=5,usableW=pageW-margin*2,usableH=pageH-margin*2; const ratio=canvas.width/canvas.height; let w=usableW,h=w/ratio; if(h>usableH){h=usableH;w=h*ratio;} pdf.addImage(img,'JPEG',(pageW-w)/2,(pageH-h)/2,w,h); return new File([pdf.output('blob')],filename,{type:'application/pdf'});
+  const clone = element.cloneNode(true);
+  clone.style.width = '210mm';
+  clone.style.height = '297mm';
+  clone.style.minHeight = '297mm';
+  clone.style.maxHeight = '297mm';
+  clone.style.margin = '0';
+  clone.style.borderRadius = '0';
+  clone.style.boxShadow = 'none';
+  clone.style.overflow = 'hidden';
+
+  const holder = document.createElement('div');
+  holder.style.position = 'fixed';
+  holder.style.left = '-10000px';
+  holder.style.top = '0';
+  holder.style.width = '210mm';
+  holder.style.height = '297mm';
+  holder.style.background = '#ffffff';
+  holder.appendChild(clone);
+  document.body.appendChild(holder);
+
+  const canvas = await html2canvas(clone,{scale:2,useCORS:true,backgroundColor:'#ffffff',width:clone.scrollWidth,height:clone.scrollHeight});
+  holder.remove();
+
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF('p','mm','a4');
+  const img = canvas.toDataURL('image/jpeg',0.98);
+  pdf.addImage(img,'JPEG',0,0,210,297);
+  return new File([pdf.output('blob')],filename,{type:'application/pdf'});
 }
 async function contractToPdfFile(filename){
   const { jsPDF } = window.jspdf; const pdf = new jsPDF('p','mm','a4'); const pages = document.querySelectorAll('.contract-page');
