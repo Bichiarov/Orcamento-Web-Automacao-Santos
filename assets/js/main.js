@@ -48,6 +48,7 @@ function safeFile(v){ return String(v||'cliente').normalize('NFD').replace(/[\u0
 
 let documentLookupTimer = null;
 let lastLookupDocument = '';
+const ENDERECO_WEB_AUTOMACAO_SANTOS = ENDERECO_WEB_AUTOMACAO_SANTOS;
 
 function init(){
   $('data').value = hojeISO();
@@ -245,7 +246,7 @@ async function consultarCnpjPublico(digitos){
     responsavel: obterResponsavelCnpj(dadosCompletos),
     telefone: dados.ddd_telefone_1 || dados.ddd_telefone_2 || dados.telefone || '',
     email: dados.email || '',
-    endereco: montarEnderecoCnpj(dadosCompletos)
+    endereco: digitos === '23349902000133' ? ENDERECO_WEB_AUTOMACAO_SANTOS : montarEnderecoCnpj(dadosCompletos)
   };
 }
 
@@ -280,7 +281,7 @@ async function preencherDadosPorDocumento(digitos){
         email: dadosCnpj.email || clienteSalvo?.email || '',
         responsavel: dadosCnpj.responsavel || clienteSalvo?.responsavel || '',
         telefone: dadosCnpj.telefone || clienteSalvo?.telefone || '',
-        endereco: dadosCnpj.endereco || clienteSalvo?.endereco || ''
+        endereco: digitos === '23349902000133' ? ENDERECO_WEB_AUTOMACAO_SANTOS : (dadosCnpj.endereco || clienteSalvo?.endereco || '')
       };
       preencherCliente(dadosFinal, true);
       setLookupStatus('Dados preenchidos pela consulta pública do CNPJ.', 'ok');
@@ -311,6 +312,9 @@ function onDocumentoInput(e){
   e.target.value = fmtDoc(e.target.value);
   const digitos = onlyNums(e.target.value);
   $('docLabel').textContent = docLabel(e.target.value);
+  if(digitos === '23349902000133'){
+    $('endereco').value = ENDERECO_WEB_AUTOMACAO_SANTOS;
+  }
   updatePreview();
   clearTimeout(documentLookupTimer);
   setLookupStatus('');
