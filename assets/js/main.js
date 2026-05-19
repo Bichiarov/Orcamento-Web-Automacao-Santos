@@ -80,13 +80,24 @@ function setLookupStatus(msg, type='info'){
   el.className = `lookup-status ${type}`;
 }
 
-function preencherCliente(clienteData){
+function enderecoPareceCompleto(valor){
+  const texto = String(valor || '').trim();
+  if(!texto) return false;
+  return /,\s*(n[ºo]?\s*)?\d+/i.test(texto) || /\bnumero\s*[:º]?\s*\d+/i.test(texto) || /\bn[ºo]\s*\d+/i.test(texto);
+}
+
+function preencherCliente(clienteData, sobrescreverEndereco = false){
   if(!clienteData) return;
   if(clienteData.nome && !$('clienteNome').value) $('clienteNome').value = clienteData.nome;
   if(clienteData.responsavel && !$('responsavel').value) $('responsavel').value = clienteData.responsavel;
   if(clienteData.telefone && !$('telefone').value) $('telefone').value = clienteData.telefone;
   if(clienteData.email && !$('email').value) $('email').value = clienteData.email;
-  if(clienteData.endereco && !$('endereco').value) $('endereco').value = clienteData.endereco;
+  if(clienteData.endereco){
+    const enderecoAtual = $('endereco').value;
+    if(sobrescreverEndereco || !enderecoAtual || !enderecoPareceCompleto(enderecoAtual)){
+      $('endereco').value = clienteData.endereco;
+    }
+  }
   updatePreview();
 }
 
@@ -187,9 +198,12 @@ async function preencherDadosPorDocumento(digitos){
 
   const clienteSalvo = await buscarClienteSalvoPorDocumento(digitos);
   if(clienteSalvo){
-    preencherCliente(clienteSalvo);
-    setLookupStatus('Dados preenchidos pelo cadastro salvo.', 'ok');
-    return;
+    preencherCliente(clienteSalvo, false);
+    if(!isCnpj){
+      setLookupStatus('Dados preenchidos pelo cadastro salvo.', 'ok');
+      return;
+    }
+    setLookupStatus('Dados salvos encontrados. Conferindo endereço completo do CNPJ...', 'info');
   }
 
   if(!isCnpj){
@@ -199,11 +213,15 @@ async function preencherDadosPorDocumento(digitos){
 
   try{
     const dadosCnpj = await consultarCnpjPublico(digitos);
-    preencherCliente(dadosCnpj);
+    preencherCliente(dadosCnpj, true);
     setLookupStatus('Dados preenchidos pela consulta pública do CNPJ.', 'ok');
   }catch(err){
     console.warn(err);
-    setLookupStatus('Não foi possível consultar este CNPJ. Preencha manualmente.', 'warn');
+    if(clienteSalvo){
+      setLookupStatus('Dados salvos carregados. Não foi possível atualizar o endereço pela consulta pública.', 'warn');
+    }else{
+      setLookupStatus('Não foi possível consultar este CNPJ. Preencha manualmente.', 'warn');
+    }
   }
 }
 
