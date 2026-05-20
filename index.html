@@ -9,8 +9,25 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
-  <main class="app-shell">
+  <section id="loginScreen" class="login-screen">
+    <form id="loginForm" class="login-card">
+      <h1><span>WEB</span> AUTOMAÇÃO SANTOS</h1>
+      <p>Acesse o app de orçamentos e contratos PDV Legal.</p>
+      <label><span>E-mail</span><input id="loginEmail" type="email" placeholder="seu@email.com" required /></label>
+      <label><span>Senha</span><input id="loginSenha" type="password" placeholder="Senha" required /></label>
+      <div id="loginError" class="login-error"></div>
+      <button type="submit" class="btn primary full">Entrar</button>
+    </form>
+  </section>
+
+  <main id="appShell" class="app-shell hidden">
     <aside class="sidebar no-print">
+      <div class="user-box">
+        <strong>Usuário logado</strong>
+        <span id="userEmail">—</span>
+        <button id="logoutBtn" type="button">Sair</button>
+      </div>
+
       <div class="sidebar-head">
         <h1>Novo orçamento</h1>
         <p>Preencha os dados, escolha os produtos e gere orçamento + contrato da Web Automação Santos.</p>

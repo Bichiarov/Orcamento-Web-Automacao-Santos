@@ -1,5 +1,6 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import { getFirestore, collection, doc, getDoc, setDoc, addDoc, getDocs, query, orderBy, limit, serverTimestamp, runTransaction } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyDv5O_X7F_NDYEoZYkfzgg5j-WLkNK-QLk",
@@ -11,6 +12,8 @@ const firebaseConfig = {
 };
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
+let appInitialized = false;
 
 const produtosPadrao = [
   { nome: "PDV Legal — Plano Base com Retaguarda", valor: 159.9 },
@@ -50,6 +53,8 @@ let documentLookupTimer = null;
 let lastLookupDocument = '';
 
 function init(){
+  if(appInitialized) return;
+  appInitialized = true;
   $('data').value = hojeISO();
   produtosPadrao.forEach(p => $('produtoSelecionado').append(new Option(p.nome, p.nome)));
   renderPriceList(); bindEvents(); updatePreview();
@@ -420,4 +425,45 @@ async function buscarSalvos(){
 }
 function loadBudget(d){ state.numero=d.numero||state.numero; state.itens=d.itens||[]; state.descontos=d.descontos||[]; $('clienteNome').value=d.cliente?.nome||''; $('documento').value=d.cliente?.documento||''; $('responsavel').value=d.cliente?.responsavel||''; $('telefone').value=d.cliente?.telefone||''; $('email').value=d.cliente?.email||''; $('endereco').value=d.cliente?.endereco||''; $('data').value=d.data||hojeISO(); $('validade').value=d.validade||'10 dias'; $('vencimento').value=d.vencimento||'Todo dia 10'; $('implementacao').value=d.totais?.implementacao||450; updatePreview(); window.scrollTo({top:0,behavior:'smooth'}); }
 
-init();
+function setupAuth(){
+  const loginScreen = $('loginScreen');
+  const appShell = $('appShell');
+  const loginForm = $('loginForm');
+  const loginError = $('loginError');
+  const userEmail = $('userEmail');
+  const logoutBtn = $('logoutBtn');
+
+  if(loginForm){
+    loginForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if(loginError) loginError.textContent = '';
+      const email = $('loginEmail').value.trim();
+      const senha = $('loginSenha').value;
+      try{
+        await signInWithEmailAndPassword(auth, email, senha);
+      }catch(error){
+        if(loginError) loginError.textContent = 'E-mail ou senha inválidos. Verifique os dados e tente novamente.';
+      }
+    });
+  }
+
+  if(logoutBtn){
+    logoutBtn.addEventListener('click', async () => {
+      await signOut(auth);
+    });
+  }
+
+  onAuthStateChanged(auth, (user) => {
+    if(user){
+      if(loginScreen) loginScreen.classList.add('hidden');
+      if(appShell) appShell.classList.remove('hidden');
+      if(userEmail) userEmail.textContent = user.email || 'Usuário logado';
+      init();
+    }else{
+      if(appShell) appShell.classList.add('hidden');
+      if(loginScreen) loginScreen.classList.remove('hidden');
+    }
+  });
+}
+
+setupAuth();

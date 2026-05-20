@@ -34,3 +34,6 @@
 .contract-page{line-height:1.2;}
 .contract-page p{margin:0 0 4px;}
 .contract-page h3{margin:10px 0 4px;}
+
+/* v48 authentication */
+.login-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f1f5f9;padding:18px}.login-card{width:100%;max-width:430px;background:#fff;border:1px solid #e2e8f0;border-radius:24px;padding:24px;box-shadow:0 20px 45px rgba(15,23,42,.14)}.login-card h1{margin:0;font-size:25px;font-weight:950;letter-spacing:-.04em}.login-card h1 span{color:#2563eb}.login-card p{margin:6px 0 20px;color:#64748b;font-size:13px}.login-card label{display:block;margin-bottom:14px}.login-card label span{display:block;font-size:11px;text-transform:uppercase;font-weight:900;letter-spacing:.04em;margin-bottom:5px;color:#334155}.login-error{min-height:20px;color:#b91c1c;font-size:12px;font-weight:800;margin:6px 0}.user-box{border:1px solid #e2e8f0;background:#f8fafc;border-radius:16px;padding:10px;margin-bottom:14px;font-size:12px}.user-box strong{display:block;color:#0f172a}.user-box span{display:block;color:#64748b;margin-top:2px;word-break:break-all}.user-box button{margin-top:8px;border:1px solid #cbd5e1;background:#fff;border-radius:8px;padding:7px 10px;font-size:11px;font-weight:900;color:#334155;cursor:pointer}.user-box button:hover{background:#f1f5f9}
