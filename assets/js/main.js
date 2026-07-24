@@ -64,7 +64,7 @@ function getProduto(nome){
 
 const state = {
   numero: `WEB-${new Date().getFullYear()}-0000`,
-  itens: [{ descricao: "Plano START — 2 PDVs", nome: "START", tipo: "pacote", recorrencia: "Mensal", inclui: [...modulosBase], quantidade: 1, valor: 159.9 }],
+  itens: [],
   descontos: [],
   precos: Object.fromEntries(produtosPadrao.map(p => [p.nome, p.valor]))
 };
@@ -101,7 +101,7 @@ function bindEvents(){
   ['clienteNome','data','telefone','responsavel','email','endereco','implementacao','validade','vencimento'].forEach(id=>$(id).addEventListener('input', updatePreview));
   $('documento').addEventListener('input', onDocumentoInput);
   $('addItem').onclick = addItem;
-  $('clearBudget').onclick = () => { state.itens = [{ descricao: produtosPadrao[0].titulo, nome: produtosPadrao[0].nome, tipo: produtosPadrao[0].tipo, recorrencia: produtosPadrao[0].recorrencia, inclui: [...produtosPadrao[0].inclui], quantidade: 1, valor: state.precos[produtosPadrao[0].nome] || produtosPadrao[0].valor }]; state.descontos = []; updatePreview(); };
+  $('clearBudget').onclick = () => { state.itens = []; state.descontos = []; updatePreview(); };
   $('removeLast').onclick = () => { if(state.itens.length > 1) state.itens.pop(); updatePreview(); };
   $('togglePrices').onclick = () => $('pricePanel').classList.toggle('hidden');
   $('resetPrices').onclick = () => { state.precos = Object.fromEntries(produtosPadrao.map(p => [p.nome, p.valor])); renderPriceList(); };
