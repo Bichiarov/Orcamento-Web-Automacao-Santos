@@ -16,21 +16,24 @@ const auth = getAuth(app);
 let appInitialized = false;
 
 const modulosBase = [
-  "Gestão em Nuvem",
-  "Gestão de entregas offline",
-  "Emissão de fichas",
-  "Integração Delivery iFood, 99 Food e Keeta",
-  "Controle Fiado",
-  "Gestão de Fichas",
-  "Mesas e Comandas"
+  "01 – Retaguarda",
+  "02 – Módulo Estoque",
+  "03 – Módulo Fiscal",
+  "04 – Módulo Financeiro",
+  "05 – Mata Ficha",
+  "06 – Integração Delivery",
+  "07 – Conta Assinada",
+  "08 – Validação de CPF",
+  "10 – Tablet na Mesa",
+  "11 – QR Code na Mesa"
 ];
 
 const produtosPadrao = [
-  { tipo: "pacote", nome: "START", titulo: "Plano START", valor: 159.9, recorrencia: "Mensal", inclui: [...modulosBase] },
-  { tipo: "pacote", nome: "ESSENCIAL", titulo: "Plano ESSENCIAL", valor: 199.9, recorrencia: "Mensal", inclui: [...modulosBase, "Estoque"] },
-  { tipo: "pacote", nome: "PROFISSIONAL", titulo: "Plano PROFISSIONAL", valor: 259.9, recorrencia: "Mensal", inclui: [...modulosBase, "Estoque", "Financeiro"] },
-  { tipo: "pacote", nome: "AVANÇADO", titulo: "Plano AVANÇADO", valor: 329.9, recorrencia: "Mensal", inclui: [...modulosBase, "Estoque", "Financeiro", "Controle de Portaria"] },
-  { tipo: "pacote", nome: "ELITE", titulo: "Plano ELITE", valor: 389.9, recorrencia: "Mensal", inclui: [...modulosBase, "Estoque", "Financeiro", "Controle de Portaria", "Cardápio QR Code Mesas"] },
+  { tipo: "pacote", nome: "START", titulo: "Plano START", valor: 159.9, recorrencia: "Mensal", inclui: ["01 – Retaguarda", "03 – Módulo Fiscal", "05 – Mata Ficha", "06 – Integração Delivery", "07 – Conta Assinada"] },
+  { tipo: "pacote", nome: "ESSENCIAL", titulo: "Plano ESSENCIAL", valor: 199.9, recorrencia: "Mensal", inclui: ["01 – Retaguarda", "02 – Módulo Estoque", "03 – Módulo Fiscal", "04 – Módulo Financeiro", "05 – Mata Ficha", "06 – Integração Delivery", "07 – Conta Assinada"] },
+  { tipo: "pacote", nome: "PROFISSIONAL", titulo: "Plano PROFISSIONAL", valor: 259.9, recorrencia: "Mensal", inclui: ["01 – Retaguarda", "02 – Módulo Estoque", "03 – Módulo Fiscal", "04 – Módulo Financeiro", "05 – Mata Ficha", "06 – Integração Delivery", "07 – Conta Assinada", "10 – Tablet na Mesa", "11 – QR Code na Mesa"] },
+  { tipo: "pacote", nome: "AVANÇADO", titulo: "Plano AVANÇADO", valor: 329.9, recorrencia: "Mensal", inclui: ["01 – Retaguarda", "02 – Módulo Estoque", "03 – Módulo Fiscal", "04 – Módulo Financeiro", "05 – Mata Ficha", "06 – Integração Delivery", "07 – Conta Assinada", "10 – Tablet na Mesa", "11 – QR Code na Mesa", "12 – Controle de Portaria"] },
+  { tipo: "pacote", nome: "ELITE", titulo: "Plano ELITE", valor: 389.9, recorrencia: "Mensal", inclui: ["01 – Retaguarda", "02 – Módulo Estoque", "03 – Módulo Fiscal", "04 – Módulo Financeiro", "05 – Mata Ficha", "06 – Integração Delivery", "07 – Conta Assinada", "10 – Tablet na Mesa", "11 – QR Code na Mesa", "12 – Controle de Portaria", "15 – Fidelidade Legal", "16 – Delivery Legal"] },
 
   { tipo: "produto", nome: "01 – Retaguarda 🖥️", titulo: "01 – Retaguarda 🖥️", valor: 60, recorrencia: "Mensal" },
   { tipo: "produto", nome: "02 – Módulo Estoque 📦", titulo: "02 – Módulo Estoque 📦", valor: 39.9, recorrencia: "Mensal" },
@@ -105,6 +108,8 @@ const $ = id => document.getElementById(id);
 const money = v => Number(v || 0).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
 function hojeISO(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 function dataBR(v){ if(!v) return ''; const [a,m,d]=v.split('-'); return `${d}/${m}/${a}`; }
+function validadeEmDias(v){ const n = Number(String(v || '').replace(/[^0-9]/g, '')); if(!n) return ''; return `${n} ${n === 1 ? 'dia' : 'dias'}`; }
+function validadeNumero(v){ return String(v || '').replace(/[^0-9]/g, '') || '10'; }
 function onlyNums(v){ return String(v||'').replace(/[^0-9]/g,''); }
 function docLabel(v){ const n=onlyNums(v); if(!n.length) return 'CPF/CNPJ'; return n.length > 11 ? 'CNPJ' : 'CPF'; }
 function fmtDoc(v){ const d=onlyNums(v).slice(0,14); if(d.length<=11) return d.replace(/([0-9]{3})([0-9])/,'$1.$2').replace(/([0-9]{3})([0-9])/,'$1.$2').replace(/([0-9]{3})([0-9]{1,2})$/,'$1-$2'); return d.replace(/([0-9]{2})([0-9])/,'$1.$2').replace(/([0-9]{3})([0-9])/,'$1.$2').replace(/([0-9]{3})([0-9])/,'$1/$2').replace(/([0-9]{4})([0-9]{1,2})$/,'$1-$2'); }
@@ -373,7 +378,7 @@ function getData(){
   const descImpl = state.descontos.filter(d=>d.tipo==='implementacao').reduce((a,d)=>a+d.valor,0);
   const impl = Number($('implementacao').value || 0);
   return {
-    numero: state.numero, data:$('data').value, validade:$('validade').value, vencimento:$('vencimento').value,
+    numero: state.numero, data:$('data').value, validade:validadeEmDias($('validade').value), vencimento:$('vencimento').value,
     cliente:{ nome:$('clienteNome').value, documento:$('documento').value, responsavel:$('responsavel').value, telefone:$('telefone').value, email:$('email').value, endereco:$('endereco').value },
     itens: state.itens, descontos: state.descontos,
     totais:{ subtotal, descMensal, descImpl, mensalidade:Math.max(0,subtotal-descMensal), implementacao:impl, implementacaoLiquida:Math.max(0,impl-descImpl) }
@@ -578,7 +583,7 @@ function loadBudget(d){
     };
   });
   state.descontos=d.descontos||[];
-  $('clienteNome').value=d.cliente?.nome||''; $('documento').value=d.cliente?.documento||''; $('responsavel').value=d.cliente?.responsavel||''; $('telefone').value=d.cliente?.telefone||''; $('email').value=d.cliente?.email||''; $('endereco').value=d.cliente?.endereco||''; $('data').value=d.data||hojeISO(); $('validade').value=d.validade||'10 dias'; $('vencimento').value=d.vencimento||'Todo dia 10'; $('implementacao').value=d.totais?.implementacao||450; updatePreview(); atualizarDisponibilidadePacotes(); window.scrollTo({top:0,behavior:'smooth'});
+  $('clienteNome').value=d.cliente?.nome||''; $('documento').value=d.cliente?.documento||''; $('responsavel').value=d.cliente?.responsavel||''; $('telefone').value=d.cliente?.telefone||''; $('email').value=d.cliente?.email||''; $('endereco').value=d.cliente?.endereco||''; $('data').value=d.data||hojeISO(); $('validade').value=validadeNumero(d.validade); $('vencimento').value=d.vencimento||'Todo dia 10'; $('implementacao').value=d.totais?.implementacao||450; updatePreview(); atualizarDisponibilidadePacotes(); window.scrollTo({top:0,behavior:'smooth'});
 }
 
 function setupAuth(){

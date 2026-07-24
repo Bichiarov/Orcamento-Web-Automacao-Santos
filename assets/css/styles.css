@@ -61,3 +61,80 @@
 @media(max-width:420px){.item-row-with-price{grid-template-columns:minmax(0,1fr) 58px 90px;gap:6px}.item-row-with-price span{font-size:9.5px}}
 
 .price-empty{border:1px dashed #cbd5e1;background:#fff;border-radius:12px;padding:12px;font-size:12px;font-weight:800;color:#64748b;text-align:center}.launched-price-item{grid-template-columns:1fr 112px}.launched-price-item input{font-weight:900;color:#0f172a}
+
+/* v56 - responsividade aprimorada para celular, tablet e desktop */
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;}
+body{overflow-x:hidden;}
+img,svg,canvas,video{max-width:100%;height:auto;}
+select,input,button{max-width:100%;}
+.document-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:18px;}
+.sidebar{max-width:100%;}
+
+@media screen and (max-width:1180px){
+  .app-shell{max-width:100%;grid-template-columns:360px minmax(0,1fr);gap:14px;padding:12px;}
+  .sidebar{padding:14px;border-radius:18px;}
+  .doc-page{transform-origin:top center;}
+}
+
+@media screen and (max-width:1000px){
+  .app-shell{display:block;padding:12px;}
+  .sidebar{position:static;margin:0 auto 16px;max-width:760px;}
+  .document-wrap{width:100%;}
+  .doc-page{width:100%;min-height:auto;border-radius:18px;padding:18px;}
+  .contract-pages,.contract-page{width:100%;min-height:auto;}
+}
+
+@media screen and (max-width:760px){
+  .app-shell{padding:10px;}
+  .sidebar{border-radius:16px;padding:12px;box-shadow:0 10px 24px rgba(15,23,42,.10);}
+  .sidebar-head h1{font-size:20px;}
+  .sidebar-head p{font-size:12px;margin-bottom:14px;}
+  .form-grid.two,.form-grid.two.aligned{grid-template-columns:1fr;gap:10px;}
+  .aligned label span{min-height:auto;}
+  .item-row,.item-row-with-price{grid-template-columns:1fr;gap:10px;}
+  .item-row input#quantidade,.item-row-with-price input#valorUnitarioItem{text-align:left;font-size:16px;padding:12px;}
+  input,select,textarea{font-size:16px;padding:12px;border-radius:12px;}
+  .btn{font-size:14px;padding:13px 12px;}
+  .button-row.two,.button-row.two.equal-actions{grid-template-columns:1fr;}
+  .action-flow{gap:12px;}
+  .doc-header{grid-template-columns:1fr;gap:10px;text-align:left;}
+  .doc-number{text-align:left;width:100%;}
+  .brand{font-size:22px;}
+  .doc-title h2{font-size:18px;}
+  .info-grid,.totals-grid,.signatures{grid-template-columns:1fr;}
+  .items-section{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .items-section table{min-width:620px;}
+  .package-description ul{columns:1;}
+  .monthly{font-size:24px;}
+  .price-item,.launched-price-item{grid-template-columns:1fr;}
+  .price-item input{text-align:left;}
+}
+
+@media screen and (max-width:480px){
+  .app-shell{padding:8px;}
+  .login-screen{padding:12px;}
+  .login-card{padding:18px;border-radius:18px;}
+  .login-card h1{font-size:22px;}
+  .sidebar{padding:10px;border-radius:14px;}
+  .field,.form-grid{margin-bottom:10px;}
+  .discounts{padding-top:12px;margin-top:12px;}
+  .doc-page{padding:12px;border-radius:14px;}
+  .box{padding:9px;border-radius:10px;}
+  .doc-header small{word-break:break-word;}
+  .brand{font-size:20px;line-height:1;}
+  .doc-title h2{font-size:16px;}
+  .doc-title p{font-size:11px;}
+  .signatures{gap:12px;}
+  .sig-space{height:34px;}
+  .items-section table{min-width:560px;}
+  .items-section table td{font-size:10px;}
+  .items-section table th{font-size:8.5px;}
+}
+
+@media screen and (max-width:360px){
+  .app-shell{padding:6px;}
+  .sidebar{padding:9px;}
+  .btn{font-size:13px;}
+  .brand{font-size:18px;}
+  .items-section table{min-width:520px;}
+}
