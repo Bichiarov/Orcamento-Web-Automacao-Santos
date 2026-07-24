@@ -53,3 +53,9 @@
 .package-description ul{margin:0;padding-left:14px;columns:2;column-gap:16px;}
 .package-description li{break-inside:avoid;font-size:9.3px;line-height:1.24;margin-bottom:2px;}
 @media print{.package-description ul{columns:2}.item-name-cell>strong{font-size:10px}.package-description li{font-size:7.8px;line-height:1.12}.items-section table td{padding:1.4mm 1.6mm}.items-section table th{font-size:7.8px}}
+
+
+/* v52 - valor unitário digitável no item */
+.item-row-with-price{grid-template-columns:minmax(0,1fr) 58px 96px;}
+.item-row-with-price input#valorUnitarioItem{text-align:right;padding-left:7px;padding-right:7px;font-size:13px;}
+@media(max-width:420px){.item-row-with-price{grid-template-columns:minmax(0,1fr) 58px 90px;gap:6px}.item-row-with-price span{font-size:9.5px}}

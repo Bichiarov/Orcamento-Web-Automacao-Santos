@@ -62,6 +62,18 @@ function getProduto(nome){
   return produtosPadrao.find(p => p.nome === nome) || produtosPadrao[0];
 }
 
+function valorAtualProduto(nome){
+  const produto = getProduto(nome);
+  return Number(state.precos[nome] ?? produto.valor ?? 0);
+}
+
+function atualizarValorUnitarioSelecionado(){
+  const campo = $('valorUnitarioItem');
+  const seletor = $('produtoSelecionado');
+  if(!campo || !seletor) return;
+  campo.value = valorAtualProduto(seletor.value).toFixed(2);
+}
+
 const state = {
   numero: `WEB-${new Date().getFullYear()}-0000`,
   itens: [],
@@ -94,17 +106,20 @@ function init(){
   grupoProdutos.label = 'PRODUTOS E SERVIÇOS';
   produtosPadrao.filter(p => p.tipo !== 'pacote').forEach(p => grupoProdutos.append(new Option(p.nome, p.nome)));
   seletor.append(grupoPacotes, grupoProdutos);
+  atualizarValorUnitarioSelecionado();
   renderPriceList(); bindEvents(); updatePreview();
 }
 
 function bindEvents(){
   ['clienteNome','data','telefone','responsavel','email','endereco','implementacao','validade','vencimento'].forEach(id=>$(id).addEventListener('input', updatePreview));
   $('documento').addEventListener('input', onDocumentoInput);
+  $('produtoSelecionado').addEventListener('change', atualizarValorUnitarioSelecionado);
+  $('valorUnitarioItem').addEventListener('input', () => {});
   $('addItem').onclick = addItem;
   $('clearBudget').onclick = () => { state.itens = []; state.descontos = []; updatePreview(); };
-  $('removeLast').onclick = () => { if(state.itens.length > 1) state.itens.pop(); updatePreview(); };
+  $('removeLast').onclick = () => { if(state.itens.length > 0) state.itens.pop(); updatePreview(); };
   $('togglePrices').onclick = () => $('pricePanel').classList.toggle('hidden');
-  $('resetPrices').onclick = () => { state.precos = Object.fromEntries(produtosPadrao.map(p => [p.nome, p.valor])); renderPriceList(); };
+  $('resetPrices').onclick = () => { state.precos = Object.fromEntries(produtosPadrao.map(p => [p.nome, p.valor])); renderPriceList(); atualizarValorUnitarioSelecionado(); };
   $('addDiscount').onclick = addDiscount;
   $('generatePdfs').onclick = gerarOrcamentoPdf;
   const gerarContratoBtn = $('generateContract');
@@ -268,7 +283,7 @@ function renderPriceList(){
     produtosPadrao.filter(p => (tipo === 'pacote' ? p.tipo === 'pacote' : p.tipo !== 'pacote')).forEach(p=>{
       const row = document.createElement('div'); row.className='price-item';
       row.innerHTML = `<span>${p.nome}<small>${p.recorrencia}</small></span><input type="number" step="0.01" value="${state.precos[p.nome] ?? p.valor}">`;
-      row.querySelector('input').addEventListener('input', e => { state.precos[p.nome] = Number(e.target.value||0); });
+      row.querySelector('input').addEventListener('input', e => { state.precos[p.nome] = Number(e.target.value||0); if($('produtoSelecionado')?.value === p.nome) atualizarValorUnitarioSelecionado(); });
       list.append(row);
     });
   });
@@ -278,6 +293,9 @@ function addItem(){
   const nome = $('produtoSelecionado').value;
   const produto = getProduto(nome);
   const qtd = Math.max(1, Number($('quantidade').value || 1));
+  const valorDigitado = Number(String($('valorUnitarioItem')?.value || '').replace(',', '.') || 0);
+  const valorFinal = Number.isFinite(valorDigitado) ? valorDigitado : valorAtualProduto(produto.nome);
+  state.precos[produto.nome] = valorFinal;
   state.itens.push({
     descricao: produto.titulo || produto.nome,
     nome: produto.nome,
@@ -285,7 +303,7 @@ function addItem(){
     recorrencia: produto.recorrencia || 'Mensal',
     inclui: produto.inclui || [],
     quantidade: qtd,
-    valor: Number(state.precos[produto.nome] ?? produto.valor ?? 0)
+    valor: valorFinal
   });
   updatePreview();
 }
