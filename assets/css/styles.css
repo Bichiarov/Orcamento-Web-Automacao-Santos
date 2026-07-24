@@ -59,3 +59,5 @@
 .item-row-with-price{grid-template-columns:minmax(0,1fr) 58px 96px;}
 .item-row-with-price input#valorUnitarioItem{text-align:right;padding-left:7px;padding-right:7px;font-size:13px;}
 @media(max-width:420px){.item-row-with-price{grid-template-columns:minmax(0,1fr) 58px 90px;gap:6px}.item-row-with-price span{font-size:9.5px}}
+
+.price-empty{border:1px dashed #cbd5e1;background:#fff;border-radius:12px;padding:12px;font-size:12px;font-weight:800;color:#64748b;text-align:center}.launched-price-item{grid-template-columns:1fr 112px}.launched-price-item input{font-weight:900;color:#0f172a}

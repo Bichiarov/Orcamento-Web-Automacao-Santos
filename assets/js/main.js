@@ -26,11 +26,11 @@ const modulosBase = [
 ];
 
 const produtosPadrao = [
-  { tipo: "pacote", nome: "START", titulo: "Plano START — 2 PDVs", valor: 159.9, recorrencia: "Mensal", inclui: [...modulosBase] },
-  { tipo: "pacote", nome: "ESSENCIAL", titulo: "Plano ESSENCIAL — 4 PDVs", valor: 199.9, recorrencia: "Mensal", inclui: [...modulosBase, "Estoque"] },
-  { tipo: "pacote", nome: "PROFISSIONAL", titulo: "Plano PROFISSIONAL — 6 PDVs", valor: 259.9, recorrencia: "Mensal", inclui: [...modulosBase, "Estoque", "Financeiro"] },
-  { tipo: "pacote", nome: "AVANÇADO", titulo: "Plano AVANÇADO — 8 PDVs", valor: 329.9, recorrencia: "Mensal", inclui: [...modulosBase, "Estoque", "Financeiro", "Controle de Portaria"] },
-  { tipo: "pacote", nome: "ELITE", titulo: "Plano ELITE — 10 PDVs", valor: 389.9, recorrencia: "Mensal", inclui: [...modulosBase, "Estoque", "Financeiro", "Controle de Portaria", "Cardápio QR Code Mesas"] },
+  { tipo: "pacote", nome: "START", titulo: "Plano START", valor: 159.9, recorrencia: "Mensal", inclui: [...modulosBase] },
+  { tipo: "pacote", nome: "ESSENCIAL", titulo: "Plano ESSENCIAL", valor: 199.9, recorrencia: "Mensal", inclui: [...modulosBase, "Estoque"] },
+  { tipo: "pacote", nome: "PROFISSIONAL", titulo: "Plano PROFISSIONAL", valor: 259.9, recorrencia: "Mensal", inclui: [...modulosBase, "Estoque", "Financeiro"] },
+  { tipo: "pacote", nome: "AVANÇADO", titulo: "Plano AVANÇADO", valor: 329.9, recorrencia: "Mensal", inclui: [...modulosBase, "Estoque", "Financeiro", "Controle de Portaria"] },
+  { tipo: "pacote", nome: "ELITE", titulo: "Plano ELITE", valor: 389.9, recorrencia: "Mensal", inclui: [...modulosBase, "Estoque", "Financeiro", "Controle de Portaria", "Cardápio QR Code Mesas"] },
 
   { tipo: "produto", nome: "01 – Retaguarda 🖥️", titulo: "01 – Retaguarda 🖥️", valor: 60, recorrencia: "Mensal" },
   { tipo: "produto", nome: "02 – Módulo Estoque 📦", titulo: "02 – Módulo Estoque 📦", valor: 39.9, recorrencia: "Mensal" },
@@ -116,10 +116,22 @@ function bindEvents(){
   $('produtoSelecionado').addEventListener('change', atualizarValorUnitarioSelecionado);
   $('valorUnitarioItem').addEventListener('input', () => {});
   $('addItem').onclick = addItem;
-  $('clearBudget').onclick = () => { state.itens = []; state.descontos = []; updatePreview(); };
-  $('removeLast').onclick = () => { if(state.itens.length > 0) state.itens.pop(); updatePreview(); };
-  $('togglePrices').onclick = () => $('pricePanel').classList.toggle('hidden');
-  $('resetPrices').onclick = () => { state.precos = Object.fromEntries(produtosPadrao.map(p => [p.nome, p.valor])); renderPriceList(); atualizarValorUnitarioSelecionado(); };
+  $('clearBudget').onclick = () => { state.itens = []; state.descontos = []; updatePreview(); if(!$('pricePanel').classList.contains('hidden')) renderPriceList(); };
+  $('removeLast').onclick = () => { if(state.itens.length > 0) state.itens.pop(); updatePreview(); if(!$('pricePanel').classList.contains('hidden')) renderPriceList(); };
+  $('togglePrices').onclick = () => {
+    renderPriceList();
+    $('pricePanel').classList.toggle('hidden');
+  };
+  $('resetPrices').onclick = () => {
+    state.itens = state.itens.map(item => {
+      const produto = getProduto(item.nome);
+      return { ...item, valor: Number(produto.valor || 0) };
+    });
+    state.precos = Object.fromEntries(produtosPadrao.map(p => [p.nome, p.valor]));
+    renderPriceList();
+    atualizarValorUnitarioSelecionado();
+    updatePreview();
+  };
   $('addDiscount').onclick = addDiscount;
   $('generatePdfs').onclick = gerarOrcamentoPdf;
   const gerarContratoBtn = $('generateContract');
@@ -274,18 +286,36 @@ function onDocumentoInput(e){
 }
 
 function renderPriceList(){
-  const list = $('priceList'); list.innerHTML = '';
-  ['pacote','produto'].forEach(tipo => {
-    const titulo = document.createElement('div');
-    titulo.className = 'price-group-title';
-    titulo.textContent = tipo === 'pacote' ? 'PACOTES' : 'PRODUTOS E SERVIÇOS';
-    list.append(titulo);
-    produtosPadrao.filter(p => (tipo === 'pacote' ? p.tipo === 'pacote' : p.tipo !== 'pacote')).forEach(p=>{
-      const row = document.createElement('div'); row.className='price-item';
-      row.innerHTML = `<span>${p.nome}<small>${p.recorrencia}</small></span><input type="number" step="0.01" value="${state.precos[p.nome] ?? p.valor}">`;
-      row.querySelector('input').addEventListener('input', e => { state.precos[p.nome] = Number(e.target.value||0); if($('produtoSelecionado')?.value === p.nome) atualizarValorUnitarioSelecionado(); });
-      list.append(row);
+  const list = $('priceList');
+  if(!list) return;
+  list.innerHTML = '';
+
+  if(state.itens.length === 0){
+    list.innerHTML = '<div class="price-empty">Nenhum item lançado no orçamento. Adicione um produto ou pacote primeiro.</div>';
+    return;
+  }
+
+  const titulo = document.createElement('div');
+  titulo.className = 'price-group-title';
+  titulo.textContent = 'ITENS LANÇADOS NO ORÇAMENTO';
+  list.append(titulo);
+
+  state.itens.forEach((item, index) => {
+    const row = document.createElement('div');
+    row.className = 'price-item launched-price-item';
+    row.innerHTML = `
+      <span>
+        ${item.descricao || item.nome}
+        <small>${item.recorrencia || 'Mensal'} • Qtd.: ${item.quantidade}</small>
+      </span>
+      <input type="number" step="0.01" min="0" value="${Number(item.valor || 0).toFixed(2)}" aria-label="Valor de ${item.descricao || item.nome}">
+    `;
+    row.querySelector('input').addEventListener('input', e => {
+      const novoValor = Number(String(e.target.value || '').replace(',', '.') || 0);
+      state.itens[index].valor = Number.isFinite(novoValor) ? novoValor : 0;
+      updatePreview();
     });
+    list.append(row);
   });
 }
 
@@ -306,6 +336,7 @@ function addItem(){
     valor: valorFinal
   });
   updatePreview();
+  if(!$('pricePanel').classList.contains('hidden')) renderPriceList();
 }
 function addDiscount(){
   const valor = Number($('descontoValor').value || 0); if(valor <= 0) return;
