@@ -15,27 +15,56 @@ const db = getFirestore(app);
 const auth = getAuth(app);
 let appInitialized = false;
 
-const produtosPadrao = [
-  { nome: "PDV Legal — Plano Base com Retaguarda", valor: 159.9 },
-  { nome: "PDV adicional", valor: 49.9 },
-  { nome: "Estoque", valor: 20 },
-  { nome: "Financeiro", valor: 20 },
-  { nome: "Tablet na Mesa", valor: 39.9 },
-  { nome: "QR Code na Mesa", valor: 39.9 },
-  { nome: "Controle de Portaria", valor: 39.9 },
-  { nome: "BYP", valor: 299.9 },
-  { nome: "Fidelidade Legal", valor: 249.9 },
-  { nome: "Delivery Legal", valor: 249.9 },
-  { nome: "Certificado Digital", valor: 199.9 },
-  { nome: "Balanças Autônomas", valor: 39.9 },
-  { nome: "KDS PDV Legal", valor: 39.9 },
-  { nome: "Totem TokMenu", valor: 79.9 },
-  { nome: "KDS TokMenu", valor: 39.9 }
+const modulosBase = [
+  "Gestão em Nuvem",
+  "Gestão de entregas offline",
+  "Emissão de fichas",
+  "Integração Delivery iFood, 99 Food e Keeta",
+  "Controle Fiado",
+  "Gestão de Fichas",
+  "Mesas e Comandas"
 ];
+
+const produtosPadrao = [
+  { tipo: "pacote", nome: "START", titulo: "Plano START — 2 PDVs", valor: 159.9, recorrencia: "Mensal", inclui: [...modulosBase] },
+  { tipo: "pacote", nome: "ESSENCIAL", titulo: "Plano ESSENCIAL — 4 PDVs", valor: 199.9, recorrencia: "Mensal", inclui: [...modulosBase, "Estoque"] },
+  { tipo: "pacote", nome: "PROFISSIONAL", titulo: "Plano PROFISSIONAL — 6 PDVs", valor: 259.9, recorrencia: "Mensal", inclui: [...modulosBase, "Estoque", "Financeiro"] },
+  { tipo: "pacote", nome: "AVANÇADO", titulo: "Plano AVANÇADO — 8 PDVs", valor: 329.9, recorrencia: "Mensal", inclui: [...modulosBase, "Estoque", "Financeiro", "Controle de Portaria"] },
+  { tipo: "pacote", nome: "ELITE", titulo: "Plano ELITE — 10 PDVs", valor: 389.9, recorrencia: "Mensal", inclui: [...modulosBase, "Estoque", "Financeiro", "Controle de Portaria", "Cardápio QR Code Mesas"] },
+
+  { tipo: "produto", nome: "01 – Retaguarda 🖥️", titulo: "01 – Retaguarda 🖥️", valor: 60, recorrencia: "Mensal" },
+  { tipo: "produto", nome: "02 – Módulo Estoque 📦", titulo: "02 – Módulo Estoque 📦", valor: 39.9, recorrencia: "Mensal" },
+  { tipo: "produto", nome: "03 – Módulo Fiscal 🧾", titulo: "03 – Módulo Fiscal 🧾", valor: 0, recorrencia: "Mensal" },
+  { tipo: "produto", nome: "04 – Módulo Financeiro 💰", titulo: "04 – Módulo Financeiro 💰", valor: 30, recorrencia: "Mensal" },
+  { tipo: "produto", nome: "05 – Mata Ficha 🎫", titulo: "05 – Mata Ficha 🎫", valor: 0, recorrencia: "Mensal" },
+  { tipo: "produto", nome: "06 – Integração Delivery 🛵", titulo: "06 – Integração Delivery 🛵", valor: 0, recorrencia: "Mensal" },
+  { tipo: "produto", nome: "07 – Conta Assinada ✍️", titulo: "07 – Conta Assinada ✍️", valor: 0, recorrencia: "Mensal" },
+  { tipo: "produto", nome: "08 – Validação de CPF 🔎", titulo: "08 – Validação de CPF 🔎", valor: 0, recorrencia: "Mensal" },
+  { tipo: "produto", nome: "09 – Servidor Windows 🖥️", titulo: "09 – Servidor Windows 🖥️", valor: 0, recorrencia: "Mensal" },
+  { tipo: "produto", nome: "10 – Tablet na Mesa 📱", titulo: "10 – Tablet na Mesa 📱", valor: 39.9, recorrencia: "Mensal" },
+  { tipo: "produto", nome: "11 – QR Code na Mesa 📲", titulo: "11 – QR Code na Mesa 📲", valor: 39.9, recorrencia: "Mensal" },
+  { tipo: "produto", nome: "12 – Controle de Portaria 🚪", titulo: "12 – Controle de Portaria 🚪", valor: 39.9, recorrencia: "Mensal" },
+  { tipo: "produto", nome: "13 – BYP 🧮", titulo: "13 – BYP 🧮", valor: 299.9, recorrencia: "Mensal" },
+  { tipo: "produto", nome: "14 – BYP Ticket 🎟️", titulo: "14 – BYP Ticket 🎟️", valor: 0, recorrencia: "Mensal" },
+  { tipo: "produto", nome: "15 – Fidelidade Legal 🪪", titulo: "15 – Fidelidade Legal 🪪", valor: 249.9, recorrencia: "Mensal" },
+  { tipo: "produto", nome: "16 – Delivery Legal 🍽️", titulo: "16 – Delivery Legal 🍽️", valor: 249.9, recorrencia: "Mensal" },
+  { tipo: "produto", nome: "17 – Certificado Digital 🔐", titulo: "17 – Certificado Digital 🔐", valor: 199.9, recorrencia: "Anual" },
+  { tipo: "produto", nome: "18 – Balança Autônoma ⚖️", titulo: "18 – Balança Autônoma ⚖️", valor: 39.9, recorrencia: "Mensal" },
+  { tipo: "produto", nome: "19 – KDS (PDV Legal) 📺", titulo: "19 – KDS (PDV Legal) 📺", valor: 39.9, recorrencia: "Mensal" },
+  { tipo: "produto", nome: "20 – Totem TokMenu ⚡", titulo: "20 – Totem TokMenu ⚡", valor: 79.9, recorrencia: "Mensal" },
+  { tipo: "produto", nome: "21 – KDS TokMenu 📺", titulo: "21 – KDS TokMenu 📺", valor: 39.9, recorrencia: "Mensal" },
+  { tipo: "produto", nome: "22 – PDV 🖨️", titulo: "22 – PDV 🖨️", valor: 20, recorrencia: "Mensal" },
+  { tipo: "produto", nome: "23 – Treinamento e Implantação 🎓", titulo: "23 – Treinamento e Implantação 🎓", valor: 450, recorrencia: "Único" },
+  { tipo: "produto", nome: "24 – Servidor Legal 🤙", titulo: "24 – Servidor Legal 🤙", valor: 0, recorrencia: "Mensal" }
+];
+
+function getProduto(nome){
+  return produtosPadrao.find(p => p.nome === nome) || produtosPadrao[0];
+}
 
 const state = {
   numero: `WEB-${new Date().getFullYear()}-0000`,
-  itens: [{ descricao: "PDV Legal — Plano Base com Retaguarda", quantidade: 1, valor: 159.9 }],
+  itens: [{ descricao: "Plano START — 2 PDVs", nome: "START", tipo: "pacote", recorrencia: "Mensal", inclui: [...modulosBase], quantidade: 1, valor: 159.9 }],
   descontos: [],
   precos: Object.fromEntries(produtosPadrao.map(p => [p.nome, p.valor]))
 };
@@ -56,7 +85,15 @@ function init(){
   if(appInitialized) return;
   appInitialized = true;
   $('data').value = hojeISO();
-  produtosPadrao.forEach(p => $('produtoSelecionado').append(new Option(p.nome, p.nome)));
+  const seletor = $('produtoSelecionado');
+  seletor.innerHTML = '';
+  const grupoPacotes = document.createElement('optgroup');
+  grupoPacotes.label = 'PACOTES';
+  produtosPadrao.filter(p => p.tipo === 'pacote').forEach(p => grupoPacotes.append(new Option(p.nome, p.nome)));
+  const grupoProdutos = document.createElement('optgroup');
+  grupoProdutos.label = 'PRODUTOS E SERVIÇOS';
+  produtosPadrao.filter(p => p.tipo !== 'pacote').forEach(p => grupoProdutos.append(new Option(p.nome, p.nome)));
+  seletor.append(grupoPacotes, grupoProdutos);
   renderPriceList(); bindEvents(); updatePreview();
 }
 
@@ -64,7 +101,7 @@ function bindEvents(){
   ['clienteNome','data','telefone','responsavel','email','endereco','implementacao','validade','vencimento'].forEach(id=>$(id).addEventListener('input', updatePreview));
   $('documento').addEventListener('input', onDocumentoInput);
   $('addItem').onclick = addItem;
-  $('clearBudget').onclick = () => { state.itens = [{ descricao: produtosPadrao[0].nome, quantidade: 1, valor: state.precos[produtosPadrao[0].nome] || produtosPadrao[0].valor }]; state.descontos = []; updatePreview(); };
+  $('clearBudget').onclick = () => { state.itens = [{ descricao: produtosPadrao[0].titulo, nome: produtosPadrao[0].nome, tipo: produtosPadrao[0].tipo, recorrencia: produtosPadrao[0].recorrencia, inclui: [...produtosPadrao[0].inclui], quantidade: 1, valor: state.precos[produtosPadrao[0].nome] || produtosPadrao[0].valor }]; state.descontos = []; updatePreview(); };
   $('removeLast').onclick = () => { if(state.itens.length > 1) state.itens.pop(); updatePreview(); };
   $('togglePrices').onclick = () => $('pricePanel').classList.toggle('hidden');
   $('resetPrices').onclick = () => { state.precos = Object.fromEntries(produtosPadrao.map(p => [p.nome, p.valor])); renderPriceList(); };
@@ -142,6 +179,15 @@ async function consultarCnpjPublico(digitos){
       endereco: enderecoWebAutomacao()
     };
   }
+  if(digitos === '23515297000123'){
+    return {
+      nome: '23.515.297 RAFAEL R',
+      responsavel: 'RAFAEL',
+      telefone: '',
+      email: '',
+      endereco: 'Rua Doutor Bernardo Browne, 172, Estuário, Santos/SP, CEP: 11025240'
+    };
+  }
 
   const resposta = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${digitos}`);
   if(!resposta.ok) throw new Error('CNPJ não encontrado na consulta pública.');
@@ -214,18 +260,34 @@ function onDocumentoInput(e){
 
 function renderPriceList(){
   const list = $('priceList'); list.innerHTML = '';
-  produtosPadrao.forEach(p=>{
-    const row = document.createElement('div'); row.className='price-item';
-    row.innerHTML = `<span>${p.nome}</span><input type="number" step="0.01" value="${state.precos[p.nome] ?? p.valor}">`;
-    row.querySelector('input').addEventListener('input', e => { state.precos[p.nome] = Number(e.target.value||0); });
-    list.append(row);
+  ['pacote','produto'].forEach(tipo => {
+    const titulo = document.createElement('div');
+    titulo.className = 'price-group-title';
+    titulo.textContent = tipo === 'pacote' ? 'PACOTES' : 'PRODUTOS E SERVIÇOS';
+    list.append(titulo);
+    produtosPadrao.filter(p => (tipo === 'pacote' ? p.tipo === 'pacote' : p.tipo !== 'pacote')).forEach(p=>{
+      const row = document.createElement('div'); row.className='price-item';
+      row.innerHTML = `<span>${p.nome}<small>${p.recorrencia}</small></span><input type="number" step="0.01" value="${state.precos[p.nome] ?? p.valor}">`;
+      row.querySelector('input').addEventListener('input', e => { state.precos[p.nome] = Number(e.target.value||0); });
+      list.append(row);
+    });
   });
 }
 
 function addItem(){
   const nome = $('produtoSelecionado').value;
+  const produto = getProduto(nome);
   const qtd = Math.max(1, Number($('quantidade').value || 1));
-  state.itens.push({ descricao:nome, quantidade:qtd, valor:Number(state.precos[nome] || 0) }); updatePreview();
+  state.itens.push({
+    descricao: produto.titulo || produto.nome,
+    nome: produto.nome,
+    tipo: produto.tipo,
+    recorrencia: produto.recorrencia || 'Mensal',
+    inclui: produto.inclui || [],
+    quantidade: qtd,
+    valor: Number(state.precos[produto.nome] ?? produto.valor ?? 0)
+  });
+  updatePreview();
 }
 function addDiscount(){
   const valor = Number($('descontoValor').value || 0); if(valor <= 0) return;
@@ -254,7 +316,14 @@ function updatePreview(){
   $('sigCliente').textContent = d.cliente.responsavel || 'Contratante'; $('sigDoc').textContent = `${docLabel(d.cliente.documento)}: ${d.cliente.documento || '________________'}`;
   const tbody=$('itemsTable'); tbody.innerHTML='';
   if(d.itens.length===0){ tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:#94a3b8">Nenhum item adicionado.</td></tr>'; }
-  d.itens.forEach(i=>{ const tr=document.createElement('tr'); tr.innerHTML=`<td>${i.descricao}</td><td>${i.quantidade}</td><td>${money(i.valor)}</td><td><b>${money(i.quantidade*i.valor)}</b></td>`; tbody.append(tr); });
+  d.itens.forEach(i=>{
+    const tr=document.createElement('tr');
+    const inclui = Array.isArray(i.inclui) && i.inclui.length
+      ? `<div class="package-description"><strong>Inclui:</strong><ul>${i.inclui.map(x => `<li>${x}</li>`).join('')}</ul></div>`
+      : '';
+    tr.innerHTML=`<td class="item-name-cell"><strong>${i.descricao}</strong><small>${i.recorrencia || 'Mensal'}</small>${inclui}</td><td>${i.quantidade}</td><td>${money(i.valor)}</td><td><b>${money(i.quantidade*i.valor)}</b></td>`;
+    tbody.append(tr);
+  });
   $('pvImplementacao').textContent = money(d.totais.implementacao); $('pvTotalImpl').textContent=money(d.totais.implementacaoLiquida); $('pvMensalidade').textContent=money(d.totais.mensalidade); $('pvVencimento').textContent=d.vencimento; $('pvValidade').textContent=d.validade;
   renderDiscounts(d); fillContract(d);
 }
@@ -423,7 +492,22 @@ async function buscarSalvos(){
   list.innerHTML=''; if(!snaps.length){list.innerHTML='<div class="saved-item">Nenhum orçamento salvo encontrado.</div>';return;}
   snaps.forEach(s=>{ const d=s.data(); const el=document.createElement('div'); el.className='saved-item'; el.innerHTML=`<b>${d.numero||'Sem número'}</b><br>${d.cliente?.nome||'Cliente não informado'}<br>${money(d.totais?.mensalidade||0)}`; el.onclick=()=>loadBudget(d); list.append(el); });
 }
-function loadBudget(d){ state.numero=d.numero||state.numero; state.itens=d.itens||[]; state.descontos=d.descontos||[]; $('clienteNome').value=d.cliente?.nome||''; $('documento').value=d.cliente?.documento||''; $('responsavel').value=d.cliente?.responsavel||''; $('telefone').value=d.cliente?.telefone||''; $('email').value=d.cliente?.email||''; $('endereco').value=d.cliente?.endereco||''; $('data').value=d.data||hojeISO(); $('validade').value=d.validade||'10 dias'; $('vencimento').value=d.vencimento||'Todo dia 10'; $('implementacao').value=d.totais?.implementacao||450; updatePreview(); window.scrollTo({top:0,behavior:'smooth'}); }
+function loadBudget(d){
+  state.numero=d.numero||state.numero;
+  state.itens=(d.itens||[]).map(item => {
+    const produto = getProduto(item.nome || item.descricao);
+    return {
+      ...item,
+      descricao: item.descricao || produto.titulo || produto.nome,
+      nome: item.nome || produto.nome,
+      tipo: item.tipo || produto.tipo,
+      recorrencia: item.recorrencia || produto.recorrencia || 'Mensal',
+      inclui: item.inclui || produto.inclui || []
+    };
+  });
+  state.descontos=d.descontos||[];
+  $('clienteNome').value=d.cliente?.nome||''; $('documento').value=d.cliente?.documento||''; $('responsavel').value=d.cliente?.responsavel||''; $('telefone').value=d.cliente?.telefone||''; $('email').value=d.cliente?.email||''; $('endereco').value=d.cliente?.endereco||''; $('data').value=d.data||hojeISO(); $('validade').value=d.validade||'10 dias'; $('vencimento').value=d.vencimento||'Todo dia 10'; $('implementacao').value=d.totais?.implementacao||450; updatePreview(); window.scrollTo({top:0,behavior:'smooth'});
+}
 
 function setupAuth(){
   const loginScreen = $('loginScreen');
