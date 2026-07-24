@@ -74,6 +74,26 @@ function atualizarValorUnitarioSelecionado(){
   campo.value = valorAtualProduto(seletor.value).toFixed(2);
 }
 
+function existePacoteLancado(){
+  return state.itens.some(item => item.tipo === 'pacote');
+}
+
+function atualizarDisponibilidadePacotes(){
+  const seletor = $('produtoSelecionado');
+  if(!seletor) return;
+  const pacoteLancado = existePacoteLancado();
+  [...seletor.options].forEach(option => {
+    const produto = getProduto(option.value);
+    option.disabled = pacoteLancado && produto.tipo === 'pacote';
+  });
+  const produtoAtual = getProduto(seletor.value);
+  if(pacoteLancado && produtoAtual.tipo === 'pacote'){
+    const primeiroProdutoAvulso = produtosPadrao.find(p => p.tipo !== 'pacote');
+    if(primeiroProdutoAvulso) seletor.value = primeiroProdutoAvulso.nome;
+  }
+  atualizarValorUnitarioSelecionado();
+}
+
 const state = {
   numero: `WEB-${new Date().getFullYear()}-0000`,
   itens: [],
@@ -107,7 +127,8 @@ function init(){
   produtosPadrao.filter(p => p.tipo !== 'pacote').forEach(p => grupoProdutos.append(new Option(p.nome, p.nome)));
   seletor.append(grupoPacotes, grupoProdutos);
   atualizarValorUnitarioSelecionado();
-  renderPriceList(); bindEvents(); updatePreview();
+  atualizarDisponibilidadePacotes();
+  bindEvents(); updatePreview();
 }
 
 function bindEvents(){
@@ -116,21 +137,16 @@ function bindEvents(){
   $('produtoSelecionado').addEventListener('change', atualizarValorUnitarioSelecionado);
   $('valorUnitarioItem').addEventListener('input', () => {});
   $('addItem').onclick = addItem;
-  $('clearBudget').onclick = () => { state.itens = []; state.descontos = []; updatePreview(); if(!$('pricePanel').classList.contains('hidden')) renderPriceList(); };
-  $('removeLast').onclick = () => { if(state.itens.length > 0) state.itens.pop(); updatePreview(); if(!$('pricePanel').classList.contains('hidden')) renderPriceList(); };
-  $('togglePrices').onclick = () => {
-    renderPriceList();
-    $('pricePanel').classList.toggle('hidden');
-  };
-  $('resetPrices').onclick = () => {
-    state.itens = state.itens.map(item => {
-      const produto = getProduto(item.nome);
-      return { ...item, valor: Number(produto.valor || 0) };
-    });
-    state.precos = Object.fromEntries(produtosPadrao.map(p => [p.nome, p.valor]));
-    renderPriceList();
-    atualizarValorUnitarioSelecionado();
+  $('clearBudget').onclick = () => {
+    state.itens = [];
+    state.descontos = [];
     updatePreview();
+    atualizarDisponibilidadePacotes();
+  };
+  $('removeLast').onclick = () => {
+    if(state.itens.length > 0) state.itens.pop();
+    updatePreview();
+    atualizarDisponibilidadePacotes();
   };
   $('addDiscount').onclick = addDiscount;
   $('generatePdfs').onclick = gerarOrcamentoPdf;
@@ -322,6 +338,13 @@ function renderPriceList(){
 function addItem(){
   const nome = $('produtoSelecionado').value;
   const produto = getProduto(nome);
+
+  if(produto.tipo === 'pacote' && existePacoteLancado()){
+    alert('Já existe um pacote lançado neste orçamento. Remova o pacote atual antes de lançar outro. Os demais produtos e serviços continuam liberados.');
+    atualizarDisponibilidadePacotes();
+    return;
+  }
+
   const qtd = Math.max(1, Number($('quantidade').value || 1));
   const valorDigitado = Number(String($('valorUnitarioItem')?.value || '').replace(',', '.') || 0);
   const valorFinal = Number.isFinite(valorDigitado) ? valorDigitado : valorAtualProduto(produto.nome);
@@ -336,7 +359,7 @@ function addItem(){
     valor: valorFinal
   });
   updatePreview();
-  if(!$('pricePanel').classList.contains('hidden')) renderPriceList();
+  atualizarDisponibilidadePacotes();
 }
 function addDiscount(){
   const valor = Number($('descontoValor').value || 0); if(valor <= 0) return;
@@ -555,7 +578,7 @@ function loadBudget(d){
     };
   });
   state.descontos=d.descontos||[];
-  $('clienteNome').value=d.cliente?.nome||''; $('documento').value=d.cliente?.documento||''; $('responsavel').value=d.cliente?.responsavel||''; $('telefone').value=d.cliente?.telefone||''; $('email').value=d.cliente?.email||''; $('endereco').value=d.cliente?.endereco||''; $('data').value=d.data||hojeISO(); $('validade').value=d.validade||'10 dias'; $('vencimento').value=d.vencimento||'Todo dia 10'; $('implementacao').value=d.totais?.implementacao||450; updatePreview(); window.scrollTo({top:0,behavior:'smooth'});
+  $('clienteNome').value=d.cliente?.nome||''; $('documento').value=d.cliente?.documento||''; $('responsavel').value=d.cliente?.responsavel||''; $('telefone').value=d.cliente?.telefone||''; $('email').value=d.cliente?.email||''; $('endereco').value=d.cliente?.endereco||''; $('data').value=d.data||hojeISO(); $('validade').value=d.validade||'10 dias'; $('vencimento').value=d.vencimento||'Todo dia 10'; $('implementacao').value=d.totais?.implementacao||450; updatePreview(); atualizarDisponibilidadePacotes(); window.scrollTo({top:0,behavior:'smooth'});
 }
 
 function setupAuth(){
